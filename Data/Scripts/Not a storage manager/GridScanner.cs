@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 
@@ -8,9 +9,20 @@ namespace Logistics
 {
     internal class GridScanner
     {
+        public List<IMyAssembler> MyAssembler = new List<IMyAssembler>();
+        public List<IMyCargoContainer> MyCargoContainer = new List<IMyCargoContainer>();
+        public List<IMyRefinery> MyRefinery = new List<IMyRefinery>();
+        public List<IMyGasGenerator> MyGasGenerator = new List<IMyGasGenerator>();
+        public List<IMyConveyorSorter> MyConveyorSorter = new List<IMyConveyorSorter>();
+        public List<IMyShipConnector> MyShipConnector = new List<IMyShipConnector>();
+        public List<IMyTextPanel> MyTextPanels = new List<IMyTextPanel>();
+        public List<IMyCubeBlock> MyOtherInventories = new List<IMyCubeBlock>();
+
         private readonly IMyCubeGrid _imyCubeGrid;
         private BlockStorage _blockStorageInstance;
+
         private bool _errorOnLoading;
+
 
         public GridScanner(IMyCubeGrid imyCubeGrid, out BlockStorage blockStorageInstance)
         {
@@ -19,30 +31,88 @@ namespace Logistics
             if (TryInitializeFromXml(out rawData)) InitializeFromXml(rawData);
             if (_errorOnLoading) ScanGridFull();
 
-
             blockStorageInstance = _blockStorageInstance;
         }
 
         private void ScanGridFull()
         {
-            var assemblers = _imyCubeGrid.GetFatBlocks<IMyAssembler>().ToList();
-            var cargoContainers = _imyCubeGrid.GetFatBlocks<IMyCargoContainer>().ToList();
-            var refineries = _imyCubeGrid.GetFatBlocks<IMyRefinery>().ToList();
-            var gasGenerators = _imyCubeGrid.GetFatBlocks<IMyGasGenerator>().ToList();
-            var conveyorSorters = _imyCubeGrid.GetFatBlocks<IMyConveyorSorter>().ToList();
-            var shipConnectors = _imyCubeGrid.GetFatBlocks<IMyShipConnector>().ToList();
+            var fatBlocks = _imyCubeGrid.GetFatBlocks<IMyCubeBlock>();
+            foreach (var fat in fatBlocks)
+            {
+                var assembler = fat as IMyAssembler;
+                if (assembler != null)
+                {
+                    MyAssembler.Add(assembler);
+                    continue;
+                }
 
-            _blockStorageInstance = new BlockStorage(
-                assemblers,
-                refineries,
-                gasGenerators,
-                shipConnectors,
-                conveyorSorters,
-                cargoContainers,
-                _imyCubeGrid
-            );
+                var cargo = fat as IMyCargoContainer;
+                if (cargo != null)
+                {
+                    MyCargoContainer.Add(cargo);
+                    continue;
+                }
+
+                var refiner = fat as IMyRefinery;
+                if (refiner != null)
+                {
+                    MyRefinery.Add(refiner);
+                    continue;
+                }
+
+                var gas = fat as IMyGasGenerator;
+                if (gas != null)
+                {
+                    MyGasGenerator.Add(gas);
+                    continue;
+                }
+
+                var conveyorSort = fat as IMyConveyorSorter;
+                if (conveyorSort != null)
+                {
+                    MyConveyorSorter.Add(conveyorSort);
+                    continue;
+                }
+
+                var shipConnect = fat as IMyShipConnector;
+                if (shipConnect != null)
+                {
+                    MyShipConnector.Add(shipConnect);
+                    continue;
+                }
+
+                var text = fat as IMyTextPanel;
+                if (text != null)
+                {
+                    MyTextPanels.Add(text);
+                    continue;
+                }
+
+                if (fat.HasInventory)
+                {
+                    MyOtherInventories.Add(fat);
+                }
+            }
+
+            if (_blockStorageInstance == null)
+            {
+                _blockStorageInstance = new BlockStorage(
+                    MyAssembler, MyRefinery, MyGasGenerator,
+                    MyShipConnector, MyConveyorSorter, MyCargoContainer,
+                    MyTextPanels,MyOtherInventories, _imyCubeGrid
+                );
+            }
+            else
+            {
+                _blockStorageInstance.UpdateAllBlocks(
+                    MyAssembler, MyRefinery, MyGasGenerator,
+                    MyShipConnector, MyConveyorSorter, MyCargoContainer,
+                    MyTextPanels, MyOtherInventories
+                );
+            }
+
         }
-        
+
         private bool TryInitializeFromXml(out List<GridData> rawData)
         {
             rawData = GridDataSerializer.DeserializeFromXml(_imyCubeGrid.EntityId.ToString());
@@ -51,62 +121,80 @@ namespace Logistics
 
         private void InitializeFromXml(List<GridData> rawData)
         {
-            var myAssembler = new List<IMyAssembler>();
-            var myCargoContainer = new List<IMyCargoContainer>();
-            var myRefinery = new List<IMyRefinery>();
-            var myGasGenerator = new List<IMyGasGenerator>();
-            var myConveyorSorter = new List<IMyConveyorSorter>();
-            var myShipConnector = new List<IMyShipConnector>();
-
             try
             {
                 foreach (var data in rawData)
                 {
-                    if(_errorOnLoading) return; 
+                    if (_errorOnLoading) return;
                     switch (data.ObjectTypeString)
                     {
                         case "IMyAssembler":
-                            myAssembler.AddRange(data.IdList.Select(GetBlockById)
+                            MyAssembler.AddRange(data.IdList.Select(GetBlockById)
                                 .Where(block => block is IMyAssembler)
                                 .Cast<IMyAssembler>());
 
                             break;
 
                         case "IMyCargoContainer":
-                            myCargoContainer.AddRange(data.IdList.Select(GetBlockById)
+                            MyCargoContainer.AddRange(data.IdList.Select(GetBlockById)
                                 .Where(block => block is IMyCargoContainer)
                                 .Cast<IMyCargoContainer>());
 
                             break;
 
                         case "IMyRefinery":
-                            myRefinery.AddRange(data.IdList.Select(GetBlockById).Where(block => block is IMyRefinery).Cast<IMyRefinery>());
+                            MyRefinery.AddRange(data.IdList.Select(GetBlockById)
+                                .Where(block => block is IMyRefinery)
+                                .Cast<IMyRefinery>());
 
                             break;
 
                         case "IMyGasGenerator":
-                            myGasGenerator.AddRange(data.IdList.Select(GetBlockById)
+                            MyGasGenerator.AddRange(data.IdList.Select(GetBlockById)
                                 .Where(block => block is IMyGasGenerator)
                                 .Cast<IMyGasGenerator>());
 
                             break;
 
                         case "IMyConveyorSorter":
-                            myConveyorSorter.AddRange(data.IdList.Select(GetBlockById)
+                            MyConveyorSorter.AddRange(data.IdList.Select(GetBlockById)
                                 .Where(block => block is IMyConveyorSorter)
                                 .Cast<IMyConveyorSorter>());
 
                             break;
 
                         case "IMyShipConnector":
-                            myShipConnector.AddRange(data.IdList.Select(GetBlockById)
+                            MyShipConnector.AddRange(data.IdList.Select(GetBlockById)
                                 .Where(block => block is IMyShipConnector)
                                 .Cast<IMyShipConnector>());
 
                             break;
+                        case "IMyTextPanel":
+                            MyTextPanels.AddRange(data.IdList.Select(GetBlockById)
+                                .Where(block => block is IMyTextPanel)
+                                .Cast<IMyTextPanel>());
+
+                            break;
                     }
                 }
-                _blockStorageInstance = new BlockStorage(myAssembler, myRefinery, myGasGenerator, myShipConnector, myConveyorSorter, myCargoContainer, _imyCubeGrid);
+
+                if (_blockStorageInstance == null)
+                {
+                    _blockStorageInstance = new BlockStorage(
+                        MyAssembler, MyRefinery, MyGasGenerator,
+                        MyShipConnector, MyConveyorSorter, MyCargoContainer,
+                        MyTextPanels, MyOtherInventories,_imyCubeGrid
+                    );
+                }
+                else
+                {
+                    _blockStorageInstance.UpdateAllBlocks(
+                        MyAssembler, MyRefinery, MyGasGenerator,
+                        MyShipConnector, MyConveyorSorter, MyCargoContainer,
+                        MyTextPanels, MyOtherInventories
+                    );
+                }
+
             }
             catch (Exception ex)
             {
@@ -124,7 +212,6 @@ namespace Logistics
                 $"An error occurred while scanning the grid, block {entityId} was not found");
             _errorOnLoading = true;
             return null;
-
         }
     }
 }

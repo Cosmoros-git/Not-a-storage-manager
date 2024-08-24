@@ -4,6 +4,7 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using VRage.Game.ModAPI;
 
 namespace Logistics
@@ -66,7 +67,7 @@ namespace Logistics
 
         public void OnGridSplit(MyCubeGrid myCubeGrid, MyCubeGrid cubeGrid)
         {
-
+            // Todo deals with grid fusion between managed grids etc.
         }
 
     }
@@ -85,6 +86,9 @@ namespace Logistics
         public BlockTypeCollection<IMyShipConnector> ShipConnectors { get; private set; }
         public BlockTypeCollection<IMyConveyorSorter> ConveyorSorters { get; private set; }
         public BlockTypeCollection<IMyCargoContainer> CargoContainers { get; private set; }
+        public BlockTypeCollection<IMyTextPanel> TextPanels { get; private set; }
+
+        public BlockTypeCollection<IMyCubeBlock> OtherInventories { get; private set; }
 
 
         public BlockStorage(List<IMyAssembler> myAssemblers = null,
@@ -93,6 +97,7 @@ namespace Logistics
             List<IMyShipConnector> myShipConnectors = null,
             List<IMyConveyorSorter> myConveyorSorters = null,
             List<IMyCargoContainer> myCargoContainers = null,
+            List<IMyTextPanel> myTextPanels =null,List<IMyCubeBlock> myOtherWithInventory = null,
             IMyCubeGrid cubeGrid = null)
         {
             Assemblers = new BlockTypeCollection<IMyAssembler>(myAssemblers);
@@ -101,11 +106,48 @@ namespace Logistics
             ShipConnectors = new BlockTypeCollection<IMyShipConnector>(myShipConnectors);
             ConveyorSorters = new BlockTypeCollection<IMyConveyorSorter>(myConveyorSorters);
             CargoContainers = new BlockTypeCollection<IMyCargoContainer>(myCargoContainers);
+            TextPanels = new BlockTypeCollection<IMyTextPanel>(myTextPanels);
+            OtherInventories = new BlockTypeCollection<IMyCubeBlock>(myOtherWithInventory);
+
             CubeGrid = cubeGrid;
             if (CubeGrid != null) MyCubeGridId = CubeGrid.EntityId;
             // It keeps telling me how CubeGrid can be null.
             // HOW IT WILL BE NULL? IT CAN NOT BE NULL.IF ITS NULL SOMETHING MESSED UP BAD.
             GetPcu();
+        }
+
+      
+        public void UpdateAllBlocks(List<IMyAssembler> myAssemblers = null,
+            List<IMyRefinery> myRefineries = null,
+            List<IMyGasGenerator> myGasGenerators = null,
+            List<IMyShipConnector> myShipConnectors = null,
+            List<IMyConveyorSorter> myConveyorSorters = null,
+            List<IMyCargoContainer> myCargoContainers = null,
+            List<IMyTextPanel> myTextPanels = null, List<IMyCubeBlock> myOtherInventories = null)
+        {
+            if (myAssemblers != null)
+                Assemblers = new BlockTypeCollection<IMyAssembler>(myAssemblers);
+
+            if (myRefineries != null)
+                Refineries = new BlockTypeCollection<IMyRefinery>(myRefineries);
+
+            if (myGasGenerators != null)
+                GasGenerators = new BlockTypeCollection<IMyGasGenerator>(myGasGenerators);
+
+            if (myShipConnectors != null)
+                ShipConnectors = new BlockTypeCollection<IMyShipConnector>(myShipConnectors);
+
+            if (myConveyorSorters != null)
+                ConveyorSorters = new BlockTypeCollection<IMyConveyorSorter>(myConveyorSorters);
+
+            if (myCargoContainers != null)
+                CargoContainers = new BlockTypeCollection<IMyCargoContainer>(myCargoContainers);
+
+            if (myTextPanels != null)
+                TextPanels = new BlockTypeCollection<IMyTextPanel>(myTextPanels);
+
+            if (myOtherInventories != null)
+                OtherInventories = new BlockTypeCollection<IMyCubeBlock>(myOtherInventories);
         }
 
         private void GetPcu()

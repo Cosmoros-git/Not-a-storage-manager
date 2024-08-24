@@ -12,6 +12,8 @@ using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Utils;
 using System.Reflection;
+using EmptyKeys.UserInterface.Generated.StoreBlockView_Bindings;
+using static VRage.Game.MyObjectBuilder_AmmoMagazineDefinition;
 
 namespace Logistics
 {
@@ -23,11 +25,12 @@ namespace Logistics
         public List<MyDefinitionBase> ComponentsDefinitions;
         public List<MyDefinitionBase> OresDefinitions;
         public List<MyDefinitionBase> IngotDefinitions;
+        public List<MyDefinitionBase> AmmoDefinition;
 
         public List<DataClass> AssemblerData = new List<DataClass>();
         public List<DataClass> RefineryData = new List<DataClass>();
         public List<DataClass> OxygenGeneratorData = new List<DataClass>();
-
+        public string BlueprintsForGuide;
         public static GetCraftersAndCraftees Instance { get; private set; }
         public override void LoadData()
         {
@@ -44,6 +47,7 @@ namespace Logistics
             ComponentsDefinitions = _allDefinitions.Where(d => d.Id.TypeId == typeof(MyObjectBuilder_Component)).ToList();
             OresDefinitions = _allDefinitions.Where(d => d.Id.TypeId == typeof(MyObjectBuilder_Ore)).ToList();
             IngotDefinitions = _allDefinitions.Where(d => d.Id.TypeId == typeof(MyObjectBuilder_Ingot)).ToList();
+            AmmoDefinition = _allDefinitions.Where(d => d.Id.TypeId == typeof(MyObjectBuilder_AmmoMagazine)).ToList();
 
             var assemblers = _allDefinitions.Where(d => d.Id.TypeId == typeof(MyObjectBuilder_Assembler)).ToList();
             var refineries = _allDefinitions.Where(d => d.Id.TypeId == typeof(MyObjectBuilder_Refinery)).ToList();
@@ -54,6 +58,7 @@ namespace Logistics
             GetAssemblerBlueprints(assemblers);
             GetRefineryBlueprints(refineries);
             GetOxygenBlueprints(oxygenGenerators);
+            Instance = this;
         }
 
         private void GetAssemblerBlueprints(List<MyDefinitionBase> definitions)
@@ -80,6 +85,7 @@ namespace Logistics
 
         public void SaveDataToXml(string fileName)
         {
+            var ProductionContent = new StringBuilder();
             var xmlContent = new StringBuilder();
             xmlContent.AppendLine("<Definitions>");
 
@@ -93,6 +99,16 @@ namespace Logistics
             }
             xmlContent.AppendLine("  </Components>");
 
+            ProductionContent.AppendLine("  <Components>");
+            foreach (var component in ComponentsDefinitions)
+            {
+                var compont = (MyComponentDefinition)component;
+                var name = compont.DisplayNameText;
+                ProductionContent.AppendLine($"    <Component SubtypeId=\"{EscapeXml(component.Id.SubtypeId.ToString())}\" SubtypeName=\"{EscapeXml(name)}\" />");
+            }
+            ProductionContent.AppendLine("  </Components>");
+
+
             // Serialize Ores
             xmlContent.AppendLine("  <Ores>");
             foreach (var ore in OresDefinitions)
@@ -103,6 +119,17 @@ namespace Logistics
                 xmlContent.AppendLine($"    <Ore SubtypeId=\"{EscapeXml(ore.Id.SubtypeId.ToString())}\" SubtypeName=\"{EscapeXml(displayName)}\" />");
             }
             xmlContent.AppendLine("  </Ores>");
+
+            // Serialize Ores
+            ProductionContent.AppendLine("  <Ores>");
+            foreach (var ore in OresDefinitions)
+            {
+                var subtypeId = ore.Id.SubtypeId.ToString();
+                var item = (MyPhysicalItemDefinition)ore;
+                var displayName = item.DisplayNameText;
+                ProductionContent.AppendLine($"    <Ore SubtypeId=\"{EscapeXml(ore.Id.SubtypeId.ToString())}\" SubtypeName=\"{EscapeXml(displayName)}\" />");
+            }
+            ProductionContent.AppendLine("  </Ores>");
 
             // Serialize Ingots
             xmlContent.AppendLine("  <Ingots>");
@@ -115,6 +142,43 @@ namespace Logistics
 
             }
             xmlContent.AppendLine("  </Ingots>");
+
+
+            ProductionContent.AppendLine("  <Ingots>");
+            foreach (var ingot in IngotDefinitions)
+            {
+                var subtypeId = ingot.Id.SubtypeId.ToString();
+                var item = (MyPhysicalItemDefinition)ingot;
+                var displayName = item.DisplayNameText;
+                ProductionContent.AppendLine($"    <Ingot SubtypeId=\"{EscapeXml(subtypeId)}\" SubtypeName=\"{EscapeXml(displayName)}\" />");
+
+            }
+            ProductionContent.AppendLine("  </Ingots>");
+
+
+            xmlContent.AppendLine("  <Ammo>");
+            foreach (var ammo in AmmoDefinition)
+            {
+                var subtypeId = ammo.Id.SubtypeId.ToString();
+                var item = (MyPhysicalItemDefinition)ammo;
+                var displayName = item.DisplayNameText;
+                xmlContent.AppendLine($"    <Ammo SubtypeId=\"{EscapeXml(subtypeId)}\" SubtypeName=\"{EscapeXml(displayName)}\" />");
+
+            }
+            xmlContent.AppendLine("  </Ammo>");
+
+            ProductionContent.AppendLine("  <Ammo>");
+            foreach (var ammo in AmmoDefinition)
+            {
+                var subtypeId = ammo.Id.SubtypeId.ToString();
+                var item = (MyPhysicalItemDefinition)ammo;
+                var displayName = item.DisplayNameText;
+                ProductionContent.AppendLine($"    <Ammo SubtypeId=\"{EscapeXml(subtypeId)}\" SubtypeName=\"{EscapeXml(displayName)}\" />");
+
+            }
+            ProductionContent.AppendLine("  </Ammo>");
+
+            BlueprintsForGuide = ProductionContent.ToString();
 
             // Serialize Assembler Data
             xmlContent.AppendLine("  <Assemblers>");
@@ -218,7 +282,7 @@ namespace Logistics
             xmlContent.AppendLine("</Definitions>");
 
             // Write the content to a file using MyAPIGateway.Utilities
-            using (var writer = MyAPIGateway.Utilities.WriteFileInLocalStorage(fileName, typeof(GetCraftersAndCraftees)))
+            using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(fileName, typeof(GetCraftersAndCraftees)))
             {
                 writer.Write(xmlContent.ToString());
             }

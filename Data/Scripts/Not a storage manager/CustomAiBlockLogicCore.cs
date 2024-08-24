@@ -1,23 +1,24 @@
 using System;
-using System.CodeDom;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
-using EmptyKeys.UserInterface.Generated.StoreBlockView_Bindings;
+using Logistics.Data.Scripts.Not_a_storage_manager;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.Components;
-using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
 namespace Logistics
 {
+    public interface IReScan
+    {
+        event Action ReScanTrigger;
+        bool ReScanEnabled { get; set; }
+    }
     public interface IEndOfLife
     {
         event Action EndOfLifeTrigger;
@@ -31,12 +32,12 @@ namespace Logistics
         event Action HeartBeatOn100;
     }
 
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_MyProgrammableBlock), false, "LargeSystemAIControl",
-        "SmallSystemAIControl")]
-    public class SystemBlockCore : MyGameLogicComponent, IHeartbeat, IEndOfLife
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_TerminalBlock), false, "LargeSystemControlPanel",
+        "SmallSystemControlPanel")]
+    public class SystemBlockCore : MyGameLogicComponent, IHeartbeat, IEndOfLife, IReScan
     {
         private int _launchSequenceStep = -1; // Step in 10th update.
-
+  
 
         private int _eventLinkStep;
         private long _ownerId = -1;
@@ -50,6 +51,8 @@ namespace Logistics
         public event Action HeartBeatOn1;
         public event Action HeartBeatOn10;
         public event Action HeartBeatOn100;
+        public event Action ReScanTrigger;
+        public bool ReScanEnabled { get; set; } = false;
 
         private bool _hasEntityBeenInitialized; // If entity is valid
         private bool _hasDataBeenLoadedOrFilled; // If data has been scanned and initialized
@@ -59,12 +62,16 @@ namespace Logistics
         private IMyCubeBlock _iBlock;
         private MyCubeGrid _myCubeGrid;
         private IMyCubeGrid _iMyCubeGrid;
+        private IMyTerminalBlock _iTerminalBlock;
 
 
         private BlockStorage _blockStorage; // This is data of the scan in the most cursed format.
         private GridBlockManager _gridBlockManager;
         private GridScanner _gridScanner;
+        private ModInventoryStorage _modInventoryStorage;
+        private ModProductionManager _modProductionManager;
         private static readonly Guid ModId = new Guid("e7a734a2-c3a3-4a3f-b4a7-b03d7a3bb59e");
+        private string guide;
 
         public void AssignManagerBlock(IMyCubeGrid grid)
         {
@@ -138,8 +145,56 @@ namespace Logistics
             MyAPIGateway.Utilities.ShowMessage("CustomAIBlock",
                 $"Grid: {_myCubeGrid.DisplayName}, OwnerId: {_ownerId}, Faction Tag: {_factionTag}");
 
-            // Now that the entity is valid, stop checking every frame and switch to every 10 frames
+            _iTerminalBlock = (IMyTerminalBlock)_iBlock;
             _hasEntityBeenInitialized = true;
+            CreateGuide();
+        }
+
+        private void CreateGuide()
+        {
+            guide = @"
+<<< Trash tags guide >>>
+This part deals with over-quota items 
+[D] = Disassemble Over Quota.
+Requires an Assembler set to disassemble. With IO it's machine specific.
+[I] = Incinerate Over Quota, with IO Incinerator. 
+[T] = Trash, finds connector with tag [TRASH], and it's used like a dumpster.
+[S] = Finds the storage container with tag [SELL] and stores them in it. 
+If they can’t find it, they will get rid of them if, somehow, they keep being produced.
+
+<<< Production tags guide >>>
+[Unique] = Make once and remove.
+Example: Make a Grinder once and be done with it.
+<Elite Grinder> 1 [Unique]>
+[Show] = Show on the production screen. On default, it's not shown. 
+At this, I run out of ideas; what else do you want? Gnomes?
+
+<<Storage tags guide>>
+
+[COMPONENTS] tag in the name will tag storage as one for components. It has a natural priority of 2.
+[ORES] tag will put ores in this storage. It will not try to suck every single ore out of everywhere. 
+It is only out of storage.
+[INGOTS] No comment on this one.
+
+In the tagged storages, there will be lists of components/ores/ingots and the number you want in VOLUME, not the amount. 
+If you decide to force more into it than can fit, well, it won't do that. It will be first come first fill.
+
+[Push] = true. It will make my manager try to always keep it empty for your fast load-out needs.
+[Spread] = true [Spread group] = groupName 
+This will make the manager try to spread between storages in the same group name.
+
+<<< Production values paste them into an appropriate LCD you want them to be shown at. >>>
+<<< I AM HORRIBLE WITH UI. I WOULD RATHER EAT GLASS THAN DEAL WITH UI. BE WARNED >>> 
+This is just a list of items you can make. Copy it and paste it into the custom data of LCD with 
+a tag [NASM] there you can specify production amounts. 
+If the number of items to show goes above 18, they will be shown on the next LCD in line with the tag and appropriate whatever.
+";
+            guide += GetCraftersAndCraftees.Instance.BlueprintsForGuide;
+        }
+        public void SetGuideToCustomData()
+        {
+            _iTerminalBlock.CustomData = guide;
+            _iTerminalBlock.RefreshCustomInfo();
         }
 
 
@@ -190,7 +245,9 @@ namespace Logistics
                     break; //Does first large grid scan
 
                 case 1:
-                    DebugTest();// Todo start custom crafter thingy omg brain no work.
+                    DebugTest();
+                    _modInventoryStorage = new ModInventoryStorage(_blockStorage);
+                    _modProductionManager = new ModProductionManager(_iMyCubeGrid,_blockStorage,_modInventoryStorage);
                     _launchSequenceStep++;
                     break;
             }
@@ -203,9 +260,14 @@ namespace Logistics
             ModLaunchSequence();
         }
 
+        private void GetControlLab(){
+
+        }
+
         public override void UpdateAfterSimulation100()
         {
             base.UpdateAfterSimulation100();
+            SetGuideToCustomData();
             HeartBeatOn100?.Invoke();
         }
 

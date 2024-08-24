@@ -21,6 +21,8 @@ namespace Logistics
     internal class ModInventoryStorage : IGridBlockManager, IModInventoryStorage, IEndOfLife
     {
 
+        //TODO OPTIMIZE INTO OBLIVION. THIS ENTIRE SCRIPT IS A MYSTERY.
+
         public event Action EndOfLifeTrigger;
         public event Action JustOnCloseTrigger;
 
@@ -102,7 +104,7 @@ namespace Logistics
             inventory.ContentsChanged -= OnContentsChanged;
         }
 
-
+        
         private void InitializeStorage()
         {
             GetTotalSpace = CalculateTotalSpace();
@@ -143,9 +145,10 @@ namespace Logistics
             GetFreeSpace += inventory.MaxVolume - inventory.CurrentVolume;
         }
 
+        
         private void OnContentsChanged(MyInventoryBase inventory)
         {
-            // Handle after inventory changes
+            CalculateFreeSpace();
         }
 
     }
