@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
-using NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridScanner;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;

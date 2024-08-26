@@ -10,16 +10,20 @@ using VRage.Utils;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
-    public class InventoriesDataStorage:ModBase,IDisposable
+    public class InventoriesDataStorage : ModBase, IDisposable
     {
         public Dictionary<string, string> TypeIdMyItemStorage = new Dictionary<string, string>();
-        public Dictionary<string, MyFixedPoint> SubTypeKeyDictionaryItemStorage = new Dictionary<string, MyFixedPoint>();
+
+        public Dictionary<string, MyFixedPoint>
+            SubTypeKeyDictionaryItemStorage = new Dictionary<string, MyFixedPoint>();
+
         public Dictionary<string, MyFixedPoint> MyItemLimitStorage = new Dictionary<string, MyFixedPoint>();
 
         public InventoriesDataStorage()
         {
             InitializeStorages();
         }
+
         private void InitializeStorages()
         {
             foreach (var definition in GetDefinitions.Instance.AmmoDefinition)
@@ -37,7 +41,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             foreach (var definition in GetDefinitions.Instance.OresDefinitions)
             {
                 TypeIdMyItemStorage[definition.Id.SubtypeId.String] = definition.DisplayNameText;
-                SubTypeKeyDictionaryItemStorage[definition.Id.SubtypeId.String] = 0; 
+                SubTypeKeyDictionaryItemStorage[definition.Id.SubtypeId.String] = 0;
             }
 
             foreach (var definition in GetDefinitions.Instance.IngotDefinitions)
@@ -51,10 +55,17 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
         public void Dispose()
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
-            TypeIdMyItemStorage.Clear();
-            SubTypeKeyDictionaryItemStorage.Clear();
-            MyItemLimitStorage.Clear();
+            try
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
+                TypeIdMyItemStorage.Clear();
+                SubTypeKeyDictionaryItemStorage.Clear();
+                MyItemLimitStorage.Clear();
+            }
+            catch (Exception ex)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"On dispose error {ex}");
+            }
         }
     }
 }

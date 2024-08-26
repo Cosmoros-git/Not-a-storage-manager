@@ -9,6 +9,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass
     public abstract class ModBase
     {
         protected string ClassName => GetType().Name;
+        protected const string TrashIdentifier = "[TRASH]";
+
+
 
     }
 }

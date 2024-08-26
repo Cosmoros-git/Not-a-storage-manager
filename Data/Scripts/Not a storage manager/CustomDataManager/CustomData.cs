@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.CustomDataManager
 {
+
     internal class CustomData
     {
     }
