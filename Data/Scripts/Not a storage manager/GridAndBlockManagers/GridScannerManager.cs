@@ -15,7 +15,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 {
     public class GridScannerManager : ModBase, IDisposable
     {
-        private event Action<List<IMyCubeGrid>> GridListChanged;
+        private event Action<HashSet<IMyConveyorSorter>> Conveyor_Sorter_ListChanged;
+
+
         private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
         private readonly HashSet<IMyCubeBlock> _cubeBlockWithInventory = new HashSet<IMyCubeBlock>();
 
@@ -25,9 +27,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private readonly HashSet<IMyConveyorSorter> _myConveyorSorter = new HashSet<IMyConveyorSorter>();
 
 
-        private List<IMyCubeGrid> _cubeGrids;
-
-
+        private readonly List<IMyCubeGrid> _cubeGrids = new List<IMyCubeGrid>();
         private IMyCubeGrid _grid;
 
 
@@ -43,11 +43,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 _subscribedGrids.Add(_grid);
             }
 
-            ScanGridsForInventories();
+            Scan_Grids_For_Inventories();
         }
 
 
-        private void ScanGridsForInventories()
+        private void Scan_Grids_For_Inventories()
         {
             if (GlobalStorageInstance.Instance.MyInventories.AllInventories.Count > 0)
             {
@@ -71,12 +71,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
                 foreach (var myCubeBlock in cubes)
                 {
-                    AddInventoryBlocks(myCubeBlock);
+                    Add_Inventory_Blocks(myCubeBlock);
                 }
             }
+
+            Conveyor_Sorter_ListChanged?.Invoke(_myConveyorSorter);
         }
 
-        private void AddInventoryBlocks(IMyCubeBlock myCubeBlock)
+        private void Add_Inventory_Blocks(IMyCubeBlock myCubeBlock)
         {
             // If no inventories return
             var inventoryCount = myCubeBlock.InventoryCount;
@@ -89,26 +91,42 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
 
             // If block is names trash don't add it to the inventories
-            if (Is_Trash_Designation(myCubeBlock)) return;
+            if (Is_Trash_Designation_Function(myCubeBlock)) return;
 
+            Add_Inventories_To_Storage(inventoryCount, myCubeBlock);
+        }
 
+        private static void Add_Inventories_To_Storage(int inventoryCount, IMyCubeBlock block)
+        {
             for (var i = 0; i < inventoryCount; i++)
             {
-                var blockInv = myCubeBlock.GetInventory(i);
+                var blockInv = block.GetInventory(i);
                 if (blockInv != null)
                 {
                     GlobalStorageInstance.Instance.MyInventories.AddInventory(blockInv);
                 }
             }
         }
-
-        private bool Is_Trash_Designation(IMyCubeBlock block)
+        private static void Remove_Inventories_To_Storage(int inventoryCount, IMyCubeBlock block)
         {
-            var terminal = block as IMyTerminalBlock;
-            return terminal != null && Is_Trash_Designation(terminal);
+            for (var i = 0; i < inventoryCount; i++)
+            {
+                var blockInv = block.GetInventory(i);
+                if (blockInv != null)
+                {
+                    GlobalStorageInstance.Instance.MyInventories.RemoveInventory(blockInv);
+                }
+            }
         }
 
-        private bool Is_Trash_Designation(IMyTerminalBlock terminal)
+
+        // Checks block Custom data for if it has [TRASH] tag.
+        private bool Is_Trash_Designation_Function(IMyCubeBlock block)
+        {
+            var terminal = block as IMyTerminalBlock;
+            return terminal != null && Is_Trash_Designation_Function(terminal);
+        }
+        private bool Is_Trash_Designation_Function(IMyTerminalBlock terminal)
         {
             var block = (IMyCubeBlock)terminal;
 
@@ -130,12 +148,23 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         }
 
 
+
+
+
+
+        private void Is_Conveyor_Sorter(IMyCubeBlock block)
+        {
+            var isConveyor = block as IMyConveyorSorter;
+            if (isConveyor == null) return;
+            _myConveyorSorter.Add(isConveyor);
+            Conveyor_Sorter_ListChanged?.Invoke(_myConveyorSorter);
+        }
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
             var block = (IMyCubeBlock)obj;
 
             // Check if the block is not designated as trash
-            if (!Is_Trash_Designation(obj))
+            if (!Is_Trash_Designation_Function(obj))
             {
                 // If the block was previously considered trash, remove it from the list
                 if (_trashBlocks.Contains(block))
@@ -144,7 +173,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
 
                 // Add the block to the inventory tracking
-                AddInventoryBlocks(block);
+                Add_Inventory_Blocks(block);
             }
             else
             {
@@ -152,20 +181,32 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 if (_trashBlocks.Contains(block)) return;
 
                 // Remove all inventories associated with the block
-                for (var i = 0; i < obj.InventoryCount; i++)
-                {
-                    GlobalStorageInstance.Instance.MyInventories.RemoveInventory(obj.GetInventory(i));
-                }
+                Remove_Inventories_To_Storage(obj.InventoryCount,block);
 
                 // Add the block to the trash list
                 _trashBlocks.Add(block);
             }
         }
 
+        private void MyGrid_OnFatBlockAdded(MyCubeBlock myCubeBlock)
+        {
+            var inventoryCount = myCubeBlock.InventoryCount;
+            if (inventoryCount < 0) return;
+            myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
+            _cubeBlockWithInventory.Add(myCubeBlock);
+            Is_Conveyor_Sorter(myCubeBlock);
+
+
+            if (Is_Trash_Designation_Function(myCubeBlock)) return;
+
+            Add_Inventories_To_Storage(inventoryCount,myCubeBlock);
+        }
+
+
 
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
-            ScanGridsForInventories();
+            Scan_Grids_For_Inventories();
         }
 
         private void Grid_OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
@@ -180,26 +221,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 return;
             }
 
-            ScanGridsForInventories();
+            Scan_Grids_For_Inventories();
         }
 
-        private void MyGrid_OnFatBlockAdded(MyCubeBlock myCubeBlock)
-        {
-            var inventoryCount = myCubeBlock.InventoryCount;
-            if (inventoryCount < 0) return;
-            myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
-            _cubeBlockWithInventory.Add(myCubeBlock);
-            if (Is_Trash_Designation(myCubeBlock)) return;
-
-            for (var i = 0; i < inventoryCount; i++)
-            {
-                var blockInv = myCubeBlock.GetInventory(i);
-                if (blockInv != null)
-                {
-                    GlobalStorageInstance.Instance.MyInventories.AddInventory(blockInv);
-                }
-            }
-        }
 
         private void Grid_OnClosing(IMyEntity obj)
         {
@@ -208,7 +232,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _grid.OnClosing -= Grid_OnClosing;
         }
 
-        private void UnsubscribeTerminalBlock(IMyCubeBlock cubeBlock)
+        private void Unsubscribe_Terminal_Block(IMyCubeBlock cubeBlock)
         {
             var terminal = cubeBlock as IMyTerminalBlock;
             if (terminal != null) terminal.CustomDataChanged -= Terminal_CustomDataChanged;
@@ -220,7 +244,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             {
                 cube.OnClosing -= MyCubeBlock_OnClosing;
                 var cubeBlock = (MyCubeBlock)cube;
-                if (_subscribedTerminals.Contains(cubeBlock)) UnsubscribeTerminalBlock(cubeBlock);
+                if (_subscribedTerminals.Contains(cubeBlock)) Unsubscribe_Terminal_Block(cubeBlock);
                 if (_trashBlocks.Contains(cubeBlock)) _trashBlocks.Remove(cubeBlock);
                 _cubeBlockWithInventory.Remove(cubeBlock);
             }
@@ -254,7 +278,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 try
                 {
                     _cubeBlockWithInventory.Remove(cube);
-                    if (_subscribedTerminals.Contains(cube)) UnsubscribeTerminalBlock(cube);
+                    if (_subscribedTerminals.Contains(cube)) Unsubscribe_Terminal_Block(cube);
                     cube.OnClosing -= MyCubeBlock_OnClosing;
                 }
                 catch (Exception ex)
@@ -293,6 +317,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _cubeGrids.Clear();
             _cubeBlockWithInventory.Clear();
             _trashBlocks.Clear();
+            _myConveyorSorter.Clear();
+            _subscribedTerminals.Clear();
         }
     }
 }
