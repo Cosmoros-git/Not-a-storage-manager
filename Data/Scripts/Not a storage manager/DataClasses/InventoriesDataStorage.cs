@@ -13,8 +13,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
     public class InventoriesDataStorage : ModBase, IDisposable
     {
         public Dictionary<string, string> DictionarySubtypeToDisplayName = new Dictionary<string, string>();
+        public Dictionary<string, string> DictionaryDisplayNameToSubtype = new Dictionary<string, string>(); // Conversions from one side to other.
 
-        public Dictionary<string, MyFixedPoint> DictionarySubtypeToMyFixedPoint = new Dictionary<string, MyFixedPoint>();
+        public Dictionary<string, MyFixedPoint> DictionarySubtypeToMyFixedPoint = new Dictionary<string, MyFixedPoint>(); // This is global storage of items.
 
         public InventoriesDataStorage()
         {
@@ -26,24 +27,28 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             foreach (var definition in GetDefinitions.Instance.AmmoDefinition)
             {
                 DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
+                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
                 DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
             }
 
             foreach (var definition in GetDefinitions.Instance.ComponentsDefinitions)
             {
                 DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
+                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
                 DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
             }
 
             foreach (var definition in GetDefinitions.Instance.OresDefinitions)
             {
                 DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
+                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
                 DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
             }
 
             foreach (var definition in GetDefinitions.Instance.IngotDefinitions)
             {   
                 DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
+                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
                 DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
             }
         }
@@ -55,6 +60,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
                 DictionarySubtypeToDisplayName.Clear();
                 DictionarySubtypeToMyFixedPoint.Clear();
+                DictionarySubtypeToDisplayName.Clear();
             }
             catch (Exception ex)
             {

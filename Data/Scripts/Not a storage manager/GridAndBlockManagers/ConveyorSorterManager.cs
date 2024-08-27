@@ -1,67 +1,140 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.CustomDataManager;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
-using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
+using Sandbox.ModAPI.Ingame;
 using VRage;
 using VRage.Game.ModAPI;
+using VRage.ModAPI;
+using IMyConveyorSorter = Sandbox.ModAPI.IMyConveyorSorter;
+using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
+
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 {
-    internal class TotallyATuple
-    {
-        public int Limit { get; private set; }
-        public float ToleranceRange { get; private set; }
-        public MyFixedPoint MinValue { get; private set; }
-        public MyFixedPoint MaxValue { get; private set; }
-
-        public TotallyATuple(int limit, float toleranceRange)
-        {
-            Limit = limit;
-            ToleranceRange = toleranceRange < 0 ? 0 : toleranceRange;
-
-            var tolerance = limit * ToleranceRange / 100;
-
-            MinValue = (MyFixedPoint)(limit - tolerance);
-            MaxValue = (MyFixedPoint)(limit + tolerance);
-        }
-    }
-
     internal class ConveyorSorterManager : HeartbeatCore, IDisposable
     {
         private readonly HashSet<IMyConveyorSorter> _myConveyorSorter;
-        private readonly Dictionary<string, string> _dictionarySubtypeToDisplayName;
-        private readonly Dictionary<string, MyFixedPoint> _dictionarySubtypeIdToMyFixedPoint;
+
+        private readonly Dictionary<string, string> _dictionaryDisplayNameToSubtype;
+        private readonly Dictionary<string, MyFixedPoint> _inventoryDictionaryInFixedPoint;
 
         public const string ClassName = "ConveyorSorterManager";
 
-        private List<IMyTerminalBlock> _subscribedTerminalBlocks = new List<IMyTerminalBlock>();
-        private readonly List<IMyConveyorSorter> _trashSorters = new List<IMyConveyorSorter>();
+        private readonly HashSet<IMyTerminalBlock> _subscribedTerminalBlocks = new HashSet<IMyTerminalBlock>();
+        private readonly HashSet<IMyConveyorSorter> _trashSorters;
 
-        public Dictionary<string, TotallyATuple> MyItemLimitStorage = new Dictionary<string, TotallyATuple>();
+        public Dictionary<IMyConveyorSorter, Dictionary<string, TotallyATuple>> MyItemLimitsRaw =
+            new Dictionary<IMyConveyorSorter, Dictionary<string, TotallyATuple>>();
 
-        const int DefaultAmount = 0;
-        const float DefaultTolerance = 10.0f;
+        public Dictionary<IMyConveyorSorter, Dictionary<string, TotallyATuple>> MyItemLimitsCounts =
+            new Dictionary<IMyConveyorSorter, Dictionary<string, TotallyATuple>>();
+
+        public List<string> WatchedListRaw = new List<string>();
+        public HashSet<string> WatchedListUnique = new HashSet<string>();
+        public HashSet<string> CurrentlyWatchedListUnique = new HashSet<string>();
+
+        private const int DefaultAmount = 0;
+        private const float DefaultTolerance = 10.0f;
 
         public ConveyorSorterManager(HashSet<IMyConveyorSorter> myConveyorSorter)
         {
-            this._myConveyorSorter = myConveyorSorter;
+            _myConveyorSorter = myConveyorSorter;
             var access = GlobalStorageInstance.Instance.MyInventories.InventoriesData;
-            _dictionarySubtypeToDisplayName = access.DictionarySubtypeToDisplayName;
-            _dictionarySubtypeIdToMyFixedPoint = access.DictionarySubtypeToMyFixedPoint;
+            _dictionaryDisplayNameToSubtype = access.DictionaryDisplayNameToSubtype;
+            _inventoryDictionaryInFixedPoint = access.DictionarySubtypeToMyFixedPoint;
+            _trashSorters = myConveyorSorter;
             Subscribe_All_Trash_Sorters(myConveyorSorter);
+            HeartbeatInstance.HeartBeat1000 += HeartbeatInstance_HeartBeat1000;
+            HeartbeatInstance.HeartBeat100 += HeartbeatInstance_HeartBeat100;
+        }
+
+        private void HeartbeatInstance_HeartBeat100()
+        {
+            foreach (var id in CurrentlyWatchedListUnique)
+            {
+                // Get the current value from the inventory dictionary
+                MyFixedPoint value;
+                if (!_inventoryDictionaryInFixedPoint.TryGetValue(id, out value))
+                {
+                    continue; // Skip if the ID is not found in the dictionary
+                }
+
+                // Iterate over each sorter and its associated limits
+                foreach (var sorterEntry in MyItemLimitsCounts)
+                {
+                    var sorter = sorterEntry.Key;
+                    var limits = sorterEntry.Value;
+
+                    // Check if the current ID has a corresponding limit in the sorter
+                    TotallyATuple watchList;
+                    if (!limits.TryGetValue(id, out watchList)) continue;
+
+                    // Compare the inventory value with the defined limit
+                    if (value >= watchList.Limit)
+                    {
+                        // If the value exceeds the limit, ensure the item is added to the filter
+                        AddToConveyorSorterFilter(sorter, id);
+                    }
+                    else
+                    {
+                        // If the value is below the limit, remove the item from the filter
+                        RemoveFromConveyorSorterFilter(sorter, id);
+                    }
+                }
+            }
+        }
+
+        // Function to add an item to the ConveyorSorter filter
+        private void AddToConveyorSorterFilter(IMyConveyorSorter sorter, string subtypeId)
+        {
+            var filterList = new List<MyInventoryItemFilter>();
+            sorter.GetFilterList(filterList);
+            if (filterList.Any(item => item.ItemId.SubtypeId.String == subtypeId)) return;
+            var filterItem = new MyInventoryItemFilter(subtypeId);
+            filterList.Add(filterItem);
+            sorter.SetFilter(MyConveyorSorterMode.Whitelist, filterList);
+        }
+
+        // Function to remove an item from the ConveyorSorter filter
+        private void RemoveFromConveyorSorterFilter(IMyConveyorSorter sorter, string subtypeId)
+        {
+            var filterList = new List<MyInventoryItemFilter>();
+            sorter.GetFilterList(filterList);
+
+            // Find the item in the filter list
+            var filterItem = filterList.FirstOrDefault(item => item.ItemId.SubtypeId.String == subtypeId);
+
+            filterList.Remove(filterItem);
+            sorter.SetFilter(MyConveyorSorterMode.Whitelist, filterList); // Assuming you want to maintain the whitelist mode
+        }
+
+
+        private void HeartbeatInstance_HeartBeat1000()
+        {
+            foreach (var id in WatchedListUnique)
+            {
+                var value = _inventoryDictionaryInFixedPoint[id];
+                foreach (var x in MyItemLimitsCounts.Select(item => item.Value))
+                {
+                    TotallyATuple watchList;
+                    if (!x.TryGetValue(id, out watchList)) continue;
+                    if (value > watchList.MaxValue) CurrentlyWatchedListUnique.Add(id);
+                }
+            }
         }
 
         private void Subscribe_All_Trash_Sorters(HashSet<IMyConveyorSorter> myConveyorSorter)
         {
             foreach (var terminal in myConveyorSorter.Cast<IMyTerminalBlock>())
             {
-                _subscribedTerminalBlocks.Add(terminal);
-                terminal.CustomDataChanged += Terminal_CustomDataChanged;
-
+                Subscribe_Terminal_Block(terminal);
+                terminal.OnClosing += Terminal_OnClosing;
                 // Should deal with all the previously set filters.
                 if (!string.IsNullOrEmpty(terminal.CustomData))
                 {
@@ -70,35 +143,34 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
         }
 
-        private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
-        {
-            if (!_trashSorters.Contains(obj)) return;
-
-            // Unsubscribe before making changes
-            Unsubscribe_Terminal_Block(obj);
-
-            // Parse and update CustomData
-            ParseAndFillCustomData(obj);
-
-            // Resubscribe after changes are made
-            Subscribe_Terminal_Block(obj);
-        }
 
         public Dictionary<string, TotallyATuple> ParseAndFillCustomData(IMyTerminalBlock obj)
         {
+            // This function is absolute hell show of data parsing.
             var data = obj.CustomData;
             var parsedData = new Dictionary<string, TotallyATuple>();
             var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             var editedLines = new List<string>();
 
+            // This is for future me. First of all why these 4 variables? First one used to parse into data into folder and be edited back and spat out.
+            // Parsed data is the freaky class that I pass with display name keys values and limits at which to start cleanup.
+            // lines no one cares. Its the text in lines
+            // edited lines is the data that will populate the custom data of the block. It removes trash out of it and populates it for easier fill.
+
             foreach (var line in lines)
             {
-                var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
+                var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim())
+                    .ToArray();
                 var itemDisplayName = parts[0];
 
-                // If DisplayName is already in the dictionary, skip processing
-                if (parsedData.ContainsKey(itemDisplayName)) continue;
+                // If display name that player gave does not exist in my storage means or I don't care about it. Or its wrong.
+                if (!_dictionaryDisplayNameToSubtype.ContainsKey(itemDisplayName)) continue;
 
+                // If DisplayName is already in the dictionary, skip processing
+                if (parsedData.ContainsKey(itemDisplayName))
+                    continue;
+
+                // Defaults if anything messes up
                 var maxAmount = DefaultAmount;
                 var percentageAboveToStartCleanup = DefaultTolerance;
 
@@ -128,6 +200,52 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             return parsedData;
         }
 
+        public void RawLimitsTransformer(IMyConveyorSorter sorter)
+        {
+            // This never should be true, but if it somehow happens. There is a check.
+            if (sorter == null || !MyItemLimitsRaw.ContainsKey(sorter)) return;
+
+            // Ensure the sorter has an entry in MyItemCounts
+            if (!MyItemLimitsCounts.ContainsKey(sorter))
+            {
+                MyItemLimitsCounts[sorter] = new Dictionary<string, TotallyATuple>();
+            }
+
+            var convertedData = MyItemLimitsCounts[sorter];
+            var rawData = MyItemLimitsRaw[sorter];
+            foreach (var data in rawData)
+            {
+                var id = _dictionaryDisplayNameToSubtype[data.Key];
+                convertedData[id] = data.Value;
+
+                // This is a way for me to not check ALL ITEMS.
+                WatchedListRaw.Add(id);
+            }
+
+            WatchedListUnique = new HashSet<string>(WatchedListRaw);
+        }
+
+        private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
+        {
+            if (!_trashSorters.Contains(obj)) return;
+
+            // Unsubscribe before making changes
+            Unsubscribe_Terminal_Block(obj);
+
+            // Parse and update CustomData
+            var data = ParseAndFillCustomData(obj);
+            var sorter = obj as IMyConveyorSorter;
+            if (sorter != null)
+            {
+                MyItemLimitsRaw[sorter] = data;
+                RawLimitsTransformer(sorter);
+            }
+
+            // Resubscribe after changes are made
+            Subscribe_Terminal_Block(obj);
+        }
+
+
         private void Unsubscribe_Terminal_Block(IMyTerminalBlock terminal)
         {
             if (!_subscribedTerminalBlocks.Contains(terminal)) return;
@@ -142,15 +260,39 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _subscribedTerminalBlocks.Add(terminal);
         }
 
+        private void Terminal_OnClosing(IMyEntity obj)
+        {
+            Unsubscribe_Terminal_Block(obj as IMyTerminalBlock);
+            var sorter = (IMyConveyorSorter)obj;
+            MyItemLimitsRaw.Remove(sorter);
+            MyItemLimitsCounts.Remove(sorter);
+            _trashSorters.Remove(sorter);
+            ClearWatchedListOfTerminal(sorter);
+        }
+
+        private void ClearWatchedListOfTerminal(IMyConveyorSorter sorter)
+        {
+            if (MyItemLimitsCounts[sorter].Count <= 0) return;
+            foreach (var item in MyItemLimitsCounts[sorter])
+            {
+                WatchedListRaw.Remove(item.Key);
+            }
+
+            WatchedListUnique = new HashSet<string>(WatchedListRaw);
+        }
+
         public void Dispose()
         {
             foreach (var terminal in _subscribedTerminalBlocks)
             {
                 Unsubscribe_Terminal_Block(terminal);
+                terminal.OnClosing -= Terminal_OnClosing;
             }
+
             _trashSorters.Clear();
             _subscribedTerminalBlocks.Clear();
             _myConveyorSorter.Clear();
+            WatchedListRaw.Clear();
         }
     }
 }

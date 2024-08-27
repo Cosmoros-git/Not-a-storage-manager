@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Game;
 using VRage;
 using VRage.Game;
@@ -15,11 +16,34 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
     public class MyInventories : ModBase, IDisposable
     {
         public HashSet<IMyInventory> AllInventories = new HashSet<IMyInventory>();
+        public Dictionary<IMyInventory, List<MyInventoryItem>> Snapshot = new Dictionary<IMyInventory, List<MyInventoryItem>>();
 
-        public Dictionary<IMyInventory, List<MyInventoryItem>> Snapshot =
-            new Dictionary<IMyInventory, List<MyInventoryItem>>();
 
         public InventoriesDataStorage InventoriesData = new InventoriesDataStorage();
+        public MyInventories()
+        {
+            ScanAllInventories();
+        }
+
+
+        private void ScanAllInventories()
+        {
+            var items = new List<MyInventoryItem>(); // Reuse the same list for each inventory
+            var inventoryDictionary = InventoriesData.DictionarySubtypeToMyFixedPoint;
+            foreach (var inventory in AllInventories)
+            {
+                inventory.GetItems(items);
+                foreach (var item in items.Where(item => inventoryDictionary.ContainsKey(item.Type.SubtypeId)))
+                {
+                    // Add the amount to the existing entry, other entries just don't matter.
+                    inventoryDictionary[item.Type.SubtypeId] += item.Amount;
+                }
+
+                // Clear the list to prepare for the next inventory
+                items.Clear();
+            }
+        }
+
 
         public void AddInventory(IMyInventory inventory)
         {
@@ -46,7 +70,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"On add inventory error {ex}");
             }
         }
-
         public void RemoveInventory(IMyInventory inventory)
         {
             try
@@ -60,7 +83,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"On remove inventory error {ex}");
             }
         }
-
         private void Inventory_OnVolumeChanged(IMyInventory arg1, float arg2, float arg3)
         {
             try
@@ -105,6 +127,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"Inventory on volume changed error {ex}");
             }
         }
+
 
         public void Dispose()
         {

@@ -49,7 +49,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _myConveyorSorterManager = new ConveyorSorterManager(_hashSetTrashConveyorSorter);
         }
 
-
         private void Scan_Grids_For_Inventories()
         {
             if (GlobalStorageInstance.Instance.MyInventories.AllInventories.Count > 0)
@@ -80,7 +79,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
             ModdedConveyorSorterHashSetChanged?.Invoke(_hashSetTrashConveyorSorter);
         }
-
         private void Add_Inventory_Blocks(IMyCubeBlock myCubeBlock)
         {
             // If no inventories return
