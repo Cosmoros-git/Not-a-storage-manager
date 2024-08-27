@@ -10,12 +10,13 @@ using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.Library.Collections;
 using VRage.ModAPI;
+using IMyConveyorSorter = Sandbox.ModAPI.IMyConveyorSorter;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 {
     public class GridScannerManager : ModBase, IDisposable
     {
-        private event Action<HashSet<IMyConveyorSorter>> Conveyor_Sorter_ListChanged;
+        private event Action<HashSet<IMyConveyorSorter>> ModdedConveyorSorterHashSetChanged;
 
 
         private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
@@ -24,11 +25,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private readonly HashSet<IMyCubeBlock> _subscribedTerminals = new HashSet<IMyCubeBlock>();
         private readonly HashSet<IMyCubeBlock> _trashBlocks = new HashSet<IMyCubeBlock>();
 
-        private readonly HashSet<IMyConveyorSorter> _myConveyorSorter = new HashSet<IMyConveyorSorter>();
-
+        private readonly HashSet<IMyConveyorSorter> _hashSetTrashConveyorSorter = new HashSet<IMyConveyorSorter>();
+        private static readonly string[] SubtypeIdName = { "LargeTrashSorter", "SmallTrashSorter" };
 
         private readonly List<IMyCubeGrid> _cubeGrids = new List<IMyCubeGrid>();
         private IMyCubeGrid _grid;
+        private readonly ConveyorSorterManager _myConveyorSorterManager;
 
 
         public GridScannerManager(IMyEntity entity)
@@ -44,6 +46,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
 
             Scan_Grids_For_Inventories();
+            _myConveyorSorterManager = new ConveyorSorterManager(_hashSetTrashConveyorSorter);
         }
 
 
@@ -75,7 +78,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
             }
 
-            Conveyor_Sorter_ListChanged?.Invoke(_myConveyorSorter);
+            ModdedConveyorSorterHashSetChanged?.Invoke(_hashSetTrashConveyorSorter);
         }
 
         private void Add_Inventory_Blocks(IMyCubeBlock myCubeBlock)
@@ -86,7 +89,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
             // Search for Sorters
             var iMyConveyorSorter = myCubeBlock as IMyConveyorSorter;
-            if (iMyConveyorSorter != null) _myConveyorSorter.Add(iMyConveyorSorter);
+            if (iMyConveyorSorter != null) _hashSetTrashConveyorSorter.Add(iMyConveyorSorter);
 
             myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
 
@@ -107,7 +110,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
             }
         }
-        private static void Remove_Inventories_To_Storage(int inventoryCount, IMyCubeBlock block)
+        private static void Remove_Inventories_From_Storage(int inventoryCount, IMyCubeBlock block)
         {
             for (var i = 0; i < inventoryCount; i++)
             {
@@ -133,8 +136,20 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             // Check if already subscribed to avoid multiple subscriptions
             if (!_subscribedTerminals.Contains(block))
             {
-                terminal.CustomDataChanged += Terminal_CustomDataChanged;
-                _subscribedTerminals.Add(block);
+                if (!Is_Conveyor_Sorter(block))
+                {
+                    terminal.CustomDataChanged += Terminal_CustomDataChanged;
+                    _subscribedTerminals.Add(block);
+                }
+                else
+                {
+                    var subtypeId = block.BlockDefinition.SubtypeId;
+                    if(SubtypeIdName.Contains(subtypeId))
+                    {
+                        _hashSetTrashConveyorSorter.Add(block as IMyConveyorSorter);
+                        ModdedConveyorSorterHashSetChanged?.Invoke(_hashSetTrashConveyorSorter);
+                    }
+                }
             }
 
             // Check the custom data after ensuring subscription
@@ -147,17 +162,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             return true;
         }
 
-
-
-
-
-
-        private void Is_Conveyor_Sorter(IMyCubeBlock block)
+        // 
+        private static bool Is_Conveyor_Sorter(IMyCubeBlock block)
         {
             var isConveyor = block as IMyConveyorSorter;
-            if (isConveyor == null) return;
-            _myConveyorSorter.Add(isConveyor);
-            Conveyor_Sorter_ListChanged?.Invoke(_myConveyorSorter);
+            return isConveyor != null;
         }
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
@@ -181,7 +190,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 if (_trashBlocks.Contains(block)) return;
 
                 // Remove all inventories associated with the block
-                Remove_Inventories_To_Storage(obj.InventoryCount,block);
+                Remove_Inventories_From_Storage(obj.InventoryCount,block);
 
                 // Add the block to the trash list
                 _trashBlocks.Add(block);
@@ -202,8 +211,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             Add_Inventories_To_Storage(inventoryCount,myCubeBlock);
         }
 
-
-
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             Scan_Grids_For_Inventories();
@@ -223,6 +230,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
             Scan_Grids_For_Inventories();
         }
+
+
 
 
         private void Grid_OnClosing(IMyEntity obj)
@@ -317,7 +326,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _cubeGrids.Clear();
             _cubeBlockWithInventory.Clear();
             _trashBlocks.Clear();
-            _myConveyorSorter.Clear();
+            _hashSetTrashConveyorSorter.Clear();
             _subscribedTerminals.Clear();
         }
     }

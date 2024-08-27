@@ -35,7 +35,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     {
                         var itemType = item.Type.SubtypeId;
                         var amount = item.Amount;
-                        InventoriesData.SubTypeKeyDictionaryItemStorage[itemType] += amount;
+                        InventoriesData.DictionarySubtypeToMyFixedPoint[itemType] += amount;
                     }
                 }
 
@@ -84,7 +84,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 var hashSet = new HashSet<string>(oldGrouped.Keys);
                 hashSet.UnionWith(newGrouped.Keys);
 
-                foreach (var id in hashSet.Where(id => InventoriesData.SubTypeKeyDictionaryItemStorage.ContainsKey(id)))
+                foreach (var id in hashSet.Where(id => InventoriesData.DictionarySubtypeToMyFixedPoint.ContainsKey(id)))
                 {
                     MyFixedPoint oldValueSum;
                     var oldAmount = oldGrouped.TryGetValue(id, out oldValueSum) ? oldValueSum : MyFixedPoint.Zero;
@@ -94,7 +94,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     var result = newAmount - oldAmount;
 
                     // Update the dictionary with the difference
-                    InventoriesData.SubTypeKeyDictionaryItemStorage[id] += result;
+                    InventoriesData.DictionarySubtypeToMyFixedPoint[id] += result;
                 }
 
                 // Updating the snapshot.

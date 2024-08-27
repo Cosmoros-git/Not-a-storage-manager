@@ -11,6 +11,7 @@ using NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using Sandbox.Game.EntityComponents;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 {
@@ -24,6 +25,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 
         public GlobalStorageInstance GlobalStorageInstance;
         public GridScannerManager VarGridScannerManager;
+        public bool IsThereGridManagerOverlap;
+
 
         public ModInitializer(IMyEntity entity)
         {
@@ -32,24 +35,74 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             _varIMyCubeGrid = _varImyCubeBlock.CubeGrid;
         }
 
-        public bool VerifyLaunch()
+        private static readonly Guid ManagedKey = new Guid("MyTrashManager300000AndOutsiderTrading"); // Insert unique GUID :D
+
+        // Check if the grid is already managed
+        public bool IsGridManagedByThisBlock(IMyCubeGrid grid)
         {
-            if (_varImyCubeBlock == null || _varIMyCubeGrid == null)
+            string storedValue;
+            if (grid.Storage == null || !grid.Storage.TryGetValue(ManagedKey, out storedValue)) return false;
+            if (!string.IsNullOrEmpty(storedValue)) return storedValue == _varImyCubeBlock.EntityId.ToString();
+            MarkGridAsManaged(_varIMyCubeGrid);
+            return true;
+        }
+
+        // Mark the grid as managed
+        public void MarkGridAsManaged(IMyCubeGrid grid)
+        {
+            if (grid.Storage == null)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, "Block or Grid is null.");
-                return false;
+                grid.Storage = new MyModStorageComponent();
             }
 
-            if (_varIMyCubeGrid.Physics == null)
+            grid.Storage.SetValue(ManagedKey, _varImyCubeBlock.EntityId.ToString());
+        }
+
+
+        public bool VerifyLaunch()
+        {
+            if (!IsThereGridManagerOverlap)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName,
-                    "Grid has no physics. Retrying in the next frame...");
+                if (_varImyCubeBlock == null || _varIMyCubeGrid == null)
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Block or Grid is null.");
+                    return false;
+                }
+
+                if (_varIMyCubeGrid.Physics == null)
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Grid has no physics. Retrying in the next frame...");
+                    return false;
+                }
+
+                if (_varIMyCubeGrid.Storage == null)
+                {
+                    MarkGridAsManaged(_varIMyCubeGrid);
+                    IsThereGridManagerOverlap = false;
+                }
+                else if (!IsGridManagedByThisBlock(_varIMyCubeGrid))
+                {
+                    IsThereGridManagerOverlap = true;
+                    return false;
+                }
             }
+            else if (_varIMyCubeGrid.Storage == null || !IsGridManagedByThisBlock(_varIMyCubeGrid))
+            {
+                IsThereGridManagerOverlap = true;
+                return false;
+            }
+            else
+            {
+                IsThereGridManagerOverlap = false;
+            }
+
+            return true; // Indicate that the grid was successfully initialized or is already managed
+
 
             MyAPIGateway.Utilities.ShowMessage(ClassName,
                 $"Grid: {_varIMyCubeGrid.DisplayName}, OwnerId: {_varImyCubeBlock.OwnerId}, Faction Tag: {_varImyCubeBlock.GetOwnerFactionTag()}");
 
-            HeartbeatInstance.HeartBeat10 += LoadingSequence;
+            HeartbeatInstance.HeartBeat100 += LoadingSequence;
             return true;
         }
 
