@@ -29,12 +29,17 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         private void ScanAllInventories()
         {
             var items = new List<MyInventoryItem>(); // Reuse the same list for each inventory
-            var inventoryDictionary = InventoriesData.DictionarySubtypeToMyFixedPoint;
+            var inventoryDictionary = InventoriesData.Storage_Dictionary;
             foreach (var inventory in AllInventories)
             {
                 inventory.GetItems(items);
-                foreach (var item in items.Where(item => inventoryDictionary.ContainsKey(item.Type.SubtypeId)))
+                foreach (var item in items)
                 {
+                    string id;
+                    var obTypeId = item.Type.TypeId
+                    EdgeCases.TryGetValue(obTypeId, out id);
+
+                    Where(item => inventoryDictionary.ContainsKey(item.Type.SubtypeId))
                     // Add the amount to the existing entry, other entries just don't matter.
                     inventoryDictionary[item.Type.SubtypeId] += item.Amount;
                 }
@@ -59,7 +64,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     {
                         var itemType = item.Type.SubtypeId;
                         var amount = item.Amount;
-                        InventoriesData.DictionarySubtypeToMyFixedPoint[itemType] += amount;
+                        InventoriesData.Storage_Dictionary[itemType] += amount;
                     }
                 }
 
@@ -106,7 +111,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 var hashSet = new HashSet<string>(oldGrouped.Keys);
                 hashSet.UnionWith(newGrouped.Keys);
 
-                foreach (var id in hashSet.Where(id => InventoriesData.DictionarySubtypeToMyFixedPoint.ContainsKey(id)))
+                foreach (var id in hashSet.Where(id => InventoriesData.Storage_Dictionary.ContainsKey(id)))
                 {
                     MyFixedPoint oldValueSum;
                     var oldAmount = oldGrouped.TryGetValue(id, out oldValueSum) ? oldValueSum : MyFixedPoint.Zero;
@@ -116,7 +121,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     var result = newAmount - oldAmount;
 
                     // Update the dictionary with the difference
-                    InventoriesData.DictionarySubtypeToMyFixedPoint[id] += result;
+                    InventoriesData.Storage_Dictionary[id] += result;
                 }
 
                 // Updating the snapshot.

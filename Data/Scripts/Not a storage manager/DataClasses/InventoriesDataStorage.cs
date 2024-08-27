@@ -6,16 +6,25 @@ using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using Sandbox.ModAPI;
 using VRage;
+using VRage.Game;
+using VRage.ObjectBuilders;
 using VRage.Utils;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
     public class InventoriesDataStorage : ModBase, IDisposable
     {
-        public Dictionary<string, string> DictionarySubtypeToDisplayName = new Dictionary<string, string>();
-        public Dictionary<string, string> DictionaryDisplayNameToSubtype = new Dictionary<string, string>(); // Conversions from one side to other.
+        // ReSharper disable InconsistentNaming
 
-        public Dictionary<string, MyFixedPoint> DictionarySubtypeToMyFixedPoint = new Dictionary<string, MyFixedPoint>(); // This is global storage of items.
+        public Dictionary<string, MyObjectBuilderType> Dictionary_Display_Name_To_ObjectBuilder_TypeId =
+            new Dictionary<string, MyObjectBuilderType>(); // Conversions from one entry into Useful thing
+
+
+        public Dictionary<MyObjectBuilderType, Dictionary<string,MyFixedPoint>> Storage_Dictionary =
+            new Dictionary<MyObjectBuilderType, Dictionary<string, MyFixedPoint>>(); // This is global storage of items.
+
+
+        public List<string> Possible_Display_Name_Entries = new List<string>();
 
         public InventoriesDataStorage()
         {
@@ -26,31 +35,44 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             foreach (var definition in GetDefinitions.Instance.AmmoDefinition)
             {
-                DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
-                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
-                DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
+                var name = definition.DisplayNameText;
+                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
+
+                FillDictionary(definition);
             }
 
             foreach (var definition in GetDefinitions.Instance.ComponentsDefinitions)
             {
-                DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
-                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
-                DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
+                var name = definition.DisplayNameText;
+                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
+                FillDictionary(definition);
             }
 
+            // Ore Definitions - Prefixed with "ore_"
             foreach (var definition in GetDefinitions.Instance.OresDefinitions)
             {
-                DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
-                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
-                DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
+                var name = definition.DisplayNameText;
+                if (!name.Contains("Ore")) name = "Ore " + name;
+                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
+                FillDictionary(definition);
             }
 
+            // Ingot Definitions - Prefixed with "ingot_"
             foreach (var definition in GetDefinitions.Instance.IngotDefinitions)
-            {   
-                DictionarySubtypeToDisplayName[definition.Id.SubtypeId.String] = definition.DisplayNameText;
-                DictionaryDisplayNameToSubtype[definition.DisplayNameText] = definition.DisplayNameText;
-                DictionarySubtypeToMyFixedPoint[definition.Id.SubtypeId.String] = 0;
+            {
+                var name = definition.DisplayNameText;
+                if (!name.Contains("Ingot")) name = "Ingot " + name;
+                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
+                FillDictionary(definition);
+
             }
+        }
+
+        private void FillDictionary(MyDefinitionBase definition)
+        {
+            Storage_Dictionary[definition.Id.TypeId] = new Dictionary<string, MyFixedPoint>();
+            var access = Storage_Dictionary[definition.Id.TypeId];
+            access[definition.Id.SubtypeName] = 0;
         }
 
         public void Dispose()
@@ -58,9 +80,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             try
             {
                 MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
-                DictionarySubtypeToDisplayName.Clear();
-                DictionarySubtypeToMyFixedPoint.Clear();
-                DictionarySubtypeToDisplayName.Clear();
+                Storage_Dictionary.Clear();
             }
             catch (Exception ex)
             {

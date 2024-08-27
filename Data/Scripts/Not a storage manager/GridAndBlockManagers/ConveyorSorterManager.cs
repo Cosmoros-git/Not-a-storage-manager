@@ -46,8 +46,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         {
             _myConveyorSorter = myConveyorSorter;
             var access = GlobalStorageInstance.Instance.MyInventories.InventoriesData;
-            _dictionaryDisplayNameToSubtype = access.DictionaryDisplayNameToSubtype;
-            _inventoryDictionaryInFixedPoint = access.DictionarySubtypeToMyFixedPoint;
+            _dictionaryDisplayNameToSubtype = access.Dictionary_Display_Name_To_ObjectBuilder_TypeId;
+            _inventoryDictionaryInFixedPoint = access.Storage_Dictionary;
             _trashSorters = myConveyorSorter;
             Subscribe_All_Trash_Sorters(myConveyorSorter);
             HeartbeatInstance.HeartBeat1000 += HeartbeatInstance_HeartBeat1000;
