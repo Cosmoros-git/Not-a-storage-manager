@@ -1,4 +1,5 @@
-﻿using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+﻿using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
 using VRage.Game;
@@ -68,19 +69,19 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public override void UpdateAfterSimulation()
         {
             base.UpdateAfterSimulation();
-            HeartbeatInstance.OnHeartBeat();
+            ModHeartRate.OnHeartBeat();
         }
 
         public override void UpdateAfterSimulation10()
         {
             base.UpdateAfterSimulation10();
-            HeartbeatInstance.OnHeartBeat10();
+            ModHeartRate.OnHeartBeat10();
         }
 
         public override void UpdateAfterSimulation100()
         {
             base.UpdateAfterSimulation100();
-            HeartbeatInstance.OnHeartBeat100();
+            ModHeartRate.OnHeartBeat100();
 
 
             if (_initialized) return;

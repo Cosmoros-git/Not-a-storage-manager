@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game;
@@ -12,23 +13,19 @@ using VRage.Utils;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
-    public class InventoriesDataStorage : ModBase, IDisposable
+    public class CreateReferenceTable : ModBase, IDisposable
     {
         // ReSharper disable InconsistentNaming
 
-        public Dictionary<string, MyObjectBuilderType> Dictionary_Display_Name_To_ObjectBuilder_TypeId =
-            new Dictionary<string, MyObjectBuilderType>(); // Conversions from one entry into Useful thing
-
-
-        public Dictionary<MyObjectBuilderType, Dictionary<string,MyFixedPoint>> Storage_Dictionary =
-            new Dictionary<MyObjectBuilderType, Dictionary<string, MyFixedPoint>>(); // This is global storage of items.
+        public ItemStorage ItemStorage;
 
 
         public List<string> Possible_Display_Name_Entries = new List<string>();
 
-        public InventoriesDataStorage()
+        public CreateReferenceTable()
         {
             InitializeStorages();
+            ItemStorage = new ItemStorage();
         }
 
         private void InitializeStorages()
@@ -36,43 +33,39 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             foreach (var definition in GetDefinitions.Instance.AmmoDefinition)
             {
                 var name = definition.DisplayNameText;
-                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
-
-                FillDictionary(definition);
+                FillDictionary(definition, name);
             }
 
             foreach (var definition in GetDefinitions.Instance.ComponentsDefinitions)
             {
                 var name = definition.DisplayNameText;
-                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
-                FillDictionary(definition);
+                FillDictionary(definition, name);
             }
 
             // Ore Definitions - Prefixed with "ore_"
             foreach (var definition in GetDefinitions.Instance.OresDefinitions)
             {
                 var name = definition.DisplayNameText;
-                if (!name.Contains("Ore")) name = "Ore " + name;
-                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
-                FillDictionary(definition);
+                if(UniqueModExceptions.Contains(name)) continue;
+                if (!NamingExceptions.Contains(name))
+                {
+                    if (!name.Contains("Ore")) name += " Ore";
+                }
+                FillDictionary(definition, name);
             }
 
             // Ingot Definitions - Prefixed with "ingot_"
             foreach (var definition in GetDefinitions.Instance.IngotDefinitions)
             {
                 var name = definition.DisplayNameText;
-                if (!name.Contains("Ingot")) name = "Ingot " + name;
-                Dictionary_Display_Name_To_ObjectBuilder_TypeId[name] = definition.Id.TypeId;
-                FillDictionary(definition);
-
+                FillDictionary(definition, name);
             }
         }
 
-        private void FillDictionary(MyDefinitionBase definition)
+        private void FillDictionary(MyDefinitionBase definition, string name)
         {
-            Storage_Dictionary[definition.Id.TypeId] = new Dictionary<string, MyFixedPoint>();
-            var access = Storage_Dictionary[definition.Id.TypeId];
-            access[definition.Id.SubtypeName] = 0;
+            ItemStorage.Add(name, definition.Id, 0);
+            Possible_Display_Name_Entries.Add(name);
         }
 
         public void Dispose()
@@ -80,7 +73,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             try
             {
                 MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
-                Storage_Dictionary.Clear();
+                ItemStorage = null;
+                Possible_Display_Name_Entries.Clear();
             }
             catch (Exception ex)
             {

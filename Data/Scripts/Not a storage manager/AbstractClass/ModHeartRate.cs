@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass
 {
-    public static class HeartbeatInstance
+    public abstract class ModHeartRate
     {
         public static event Action HeartBeat;
         public static event Action HeartBeat10;

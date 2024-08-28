@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Policy;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -16,7 +17,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 {
     public class GridScannerManager : ModBase, IDisposable
     {
-        private event Action<HashSet<IMyConveyorSorter>> ModdedConveyorSorterHashSetChanged;
+        private event Action<IMyConveyorSorter> ModSorterAdded;
 
 
         private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
@@ -30,8 +31,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private readonly List<IMyCubeGrid> _cubeGrids = new List<IMyCubeGrid>();
         private IMyCubeGrid _grid;
-        private readonly ConveyorSorterManager _myConveyorSorterManager;
-
+        private readonly ModSorterManager _manager;
 
         public GridScannerManager(IMyEntity entity)
         {
@@ -46,14 +46,15 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
 
             Scan_Grids_For_Inventories();
-            _myConveyorSorterManager = new ConveyorSorterManager(_hashSetTrashConveyorSorter);
+            _manager = new ModSorterManager(_hashSetTrashConveyorSorter);
+            ModSorterAdded+= _manager.OnTrashSorterAdded;
         }
 
         private void Scan_Grids_For_Inventories()
         {
-            if (GlobalStorageInstance.Instance.MyInventories.AllInventories.Count > 0)
+            if (ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0)
             {
-                GlobalStorageInstance.Instance.MyInventories.Dispose();
+                ModAccessStatic.Instance.InventoryScanner.Dispose();
                 _cubeBlockWithInventory.Clear();
             }
 
@@ -76,8 +77,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     Add_Inventory_Blocks(myCubeBlock);
                 }
             }
-
-            ModdedConveyorSorterHashSetChanged?.Invoke(_hashSetTrashConveyorSorter);
         }
         private void Add_Inventory_Blocks(IMyCubeBlock myCubeBlock)
         {
@@ -104,7 +103,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 var blockInv = block.GetInventory(i);
                 if (blockInv != null)
                 {
-                    GlobalStorageInstance.Instance.MyInventories.AddInventory(blockInv);
+                    ModAccessStatic.Instance.InventoryScanner.AddInventory(blockInv);
                 }
             }
         }
@@ -115,7 +114,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 var blockInv = block.GetInventory(i);
                 if (blockInv != null)
                 {
-                    GlobalStorageInstance.Instance.MyInventories.RemoveInventory(blockInv);
+                    ModAccessStatic.Instance.InventoryScanner.RemoveInventory((MyInventory)blockInv);
                 }
             }
         }
@@ -144,8 +143,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     var subtypeId = block.BlockDefinition.SubtypeId;
                     if(SubtypeIdName.Contains(subtypeId))
                     {
-                        _hashSetTrashConveyorSorter.Add(block as IMyConveyorSorter);
-                        ModdedConveyorSorterHashSetChanged?.Invoke(_hashSetTrashConveyorSorter);
+                        var sorter = block as IMyConveyorSorter;
+                        _hashSetTrashConveyorSorter.Add(sorter);
+                        ModSorterAdded?.Invoke(sorter);
                     }
                 }
             }
@@ -160,12 +160,17 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             return true;
         }
 
-        // 
+
+
         private static bool Is_Conveyor_Sorter(IMyCubeBlock block)
         {
             var isConveyor = block as IMyConveyorSorter;
             return isConveyor != null;
         }
+
+
+
+
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
             var block = (IMyCubeBlock)obj;
@@ -194,7 +199,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 _trashBlocks.Add(block);
             }
         }
-
         private void MyGrid_OnFatBlockAdded(MyCubeBlock myCubeBlock)
         {
             var inventoryCount = myCubeBlock.InventoryCount;
@@ -209,11 +213,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             Add_Inventories_To_Storage(inventoryCount,myCubeBlock);
         }
 
+
+
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             Scan_Grids_For_Inventories();
         }
-
         private void Grid_OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             if (_grid == arg2)
@@ -238,13 +243,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _grid.OnGridSplit -= Grid_OnGridSplit;
             _grid.OnClosing -= Grid_OnClosing;
         }
-
         private void Unsubscribe_Terminal_Block(IMyCubeBlock cubeBlock)
         {
             var terminal = cubeBlock as IMyTerminalBlock;
             if (terminal != null) terminal.CustomDataChanged -= Terminal_CustomDataChanged;
         }
-
         private void MyCubeBlock_OnClosing(IMyEntity cube)
         {
             try
@@ -266,11 +269,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 var blockInv = cube.GetInventory(i);
                 if (blockInv != null)
                 {
-                    GlobalStorageInstance.Instance.MyInventories.RemoveInventory(blockInv);
+                    ModAccessStatic.Instance.InventoryScanner.RemoveInventory((MyInventory)blockInv);
                 }
             }
         }
-
         private void MyGrid_OnClosing(IMyEntity obj)
         {
             var myCubeBlock = (IMyCubeBlock)obj;
@@ -299,7 +301,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     var blockInv = cube.GetInventory(i);
                     if (blockInv != null)
                     {
-                        GlobalStorageInstance.Instance.MyInventories.RemoveInventory(blockInv);
+                        ModAccessStatic.Instance.InventoryScanner.RemoveInventory((MyInventory)blockInv);
                     }
                 }
             }
@@ -314,6 +316,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 {
                     MyGrid_OnClosing(cubeGrid);
                 }
+                ModSorterAdded -= _manager.OnTrashSorterAdded;
             }
             catch (Exception ex)
             {

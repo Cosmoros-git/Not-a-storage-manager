@@ -23,7 +23,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         private readonly IMyCubeBlock _varImyCubeBlock;
         private readonly IMyCubeGrid _varIMyCubeGrid;
 
-        public GlobalStorageInstance GlobalStorageInstance;
+        public ModAccessStatic GlobalStorageInstance;
         public GridScannerManager VarGridScannerManager;
         public bool IsThereGridManagerOverlap;
 
@@ -95,14 +95,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             {
                 IsThereGridManagerOverlap = false;
             }
-
-            return true; // Indicate that the grid was successfully initialized or is already managed
-
+            
 
             MyAPIGateway.Utilities.ShowMessage(ClassName,
                 $"Grid: {_varIMyCubeGrid.DisplayName}, OwnerId: {_varImyCubeBlock.OwnerId}, Faction Tag: {_varImyCubeBlock.GetOwnerFactionTag()}");
 
-            HeartbeatInstance.HeartBeat100 += LoadingSequence;
+            HeartBeat100 += LoadingSequence;
             return true;
         }
 
@@ -111,7 +109,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             switch (_loadingStep)
             {
                 case 1:
-                    GlobalStorageInstance = new GlobalStorageInstance();
+                    GlobalStorageInstance = new ModAccessStatic();
                     MyAPIGateway.Utilities.ShowMessage(ClassName,
                         $"Loading sequence step 1");
                     _loadingStep++;

@@ -8,19 +8,20 @@ using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Game;
 using VRage;
 using VRage.Game;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI.Ingame;
 using IMyInventory = VRage.Game.ModAPI.IMyInventory;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
-    public class MyInventories : ModBase, IDisposable
+    public class InventoryScanner : ModBase, IDisposable
     {
-        public HashSet<IMyInventory> AllInventories = new HashSet<IMyInventory>();
-        public Dictionary<IMyInventory, List<MyInventoryItem>> Snapshot = new Dictionary<IMyInventory, List<MyInventoryItem>>();
+        public HashSet<MyInventory> AllInventories = new HashSet<MyInventory>();
+        public Dictionary<MyInventory, List<MyPhysicalInventoryItem>> Snapshot = new Dictionary<MyInventory, List<MyPhysicalInventoryItem>>();
 
 
-        public InventoriesDataStorage InventoriesData = new InventoriesDataStorage();
-        public MyInventories()
+        public CreateReferenceTable ReferenceData = new CreateReferenceTable();
+        public InventoryScanner()
         {
             ScanAllInventories();
         }
@@ -28,20 +29,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
         private void ScanAllInventories()
         {
-            var items = new List<MyInventoryItem>(); // Reuse the same list for each inventory
-            var inventoryDictionary = InventoriesData.Storage_Dictionary;
-            foreach (var inventory in AllInventories)
+            var modInventory = ReferenceData.ItemStorage;
+            foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
             {
-                inventory.GetItems(items);
                 foreach (var item in items)
                 {
-                    string id;
-                    var obTypeId = item.Type.TypeId
-                    EdgeCases.TryGetValue(obTypeId, out id);
-
-                    Where(item => inventoryDictionary.ContainsKey(item.Type.SubtypeId))
-                    // Add the amount to the existing entry, other entries just don't matter.
-                    inventoryDictionary[item.Type.SubtypeId] += item.Amount;
+                    var definitionId = item.GetDefinitionId();
+                    if(!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
+                    modInventory.TryUpdateValue(definitionId, item.Amount);
                 }
 
                 // Clear the list to prepare for the next inventory
@@ -54,18 +49,21 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                AllInventories.Add(inventory);
+                var modInventory = ReferenceData.ItemStorage;
+                var myInventory = (MyInventory)inventory;
+                AllInventories.Add(myInventory);
                 if (!inventory.Empty())
                 {
-                    var items = new List<MyInventoryItem>();
-                    inventory.GetItems(items);
-                    Snapshot[inventory] = items;
+                    var items = myInventory.GetItems(); // Reuse the same list for each inventory
                     foreach (var item in items)
                     {
-                        var itemType = item.Type.SubtypeId;
-                        var amount = item.Amount;
-                        InventoriesData.Storage_Dictionary[itemType] += amount;
+                        var definitionId = item.GetDefinitionId();
+                        if (!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
+                        modInventory.TryUpdateValue(definitionId, item.Amount);
                     }
+
+                    // Clear the list to prepare for the next inventory
+                    items.Clear();
                 }
 
                 inventory.OnVolumeChanged += Inventory_OnVolumeChanged;
@@ -75,7 +73,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"On add inventory error {ex}");
             }
         }
-        public void RemoveInventory(IMyInventory inventory)
+        public void RemoveInventory(MyInventory inventory)
         {
             try
             {
@@ -92,27 +90,36 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                var newValue = new List<MyInventoryItem>();
-                arg1.GetItems(newValue);
-                var oldValue = Snapshot[arg1];
+                var inventory = (MyInventory)arg1;
 
-                // Group old and new items by SubtypeId and sum their amounts
+                // Retrieve the current items in the inventory
+                var newValue = inventory.GetItems();
+                List<MyPhysicalInventoryItem> oldValue;
+                if (!Snapshot.TryGetValue(inventory, out oldValue))
+                {
+                    // If the snapshot doesn't exist, initialize it and return
+                    Snapshot[inventory] = newValue;
+                    return;
+                }
+
+                // Group old and new items by MyDefinitionId and sum their amounts
                 var oldGrouped = oldValue
-                    .GroupBy(item => item.Type.SubtypeId)
+                    .GroupBy(item => item.GetDefinitionId())
                     .ToDictionary(group => group.Key,
                         group => group.Aggregate(MyFixedPoint.Zero, (total, next) => total + next.Amount));
 
                 var newGrouped = newValue
-                    .GroupBy(item => item.Type.SubtypeId)
+                    .GroupBy(item => item.GetDefinitionId())
                     .ToDictionary(group => group.Key,
                         group => group.Aggregate(MyFixedPoint.Zero, (total, next) => total + next.Amount));
 
-                // HashSet to ensure unique SubtypeIds
-                var hashSet = new HashSet<string>(oldGrouped.Keys);
-                hashSet.UnionWith(newGrouped.Keys);
+                // HashSet to ensure unique MyDefinitionIds
+                var uniqueIds = new HashSet<MyDefinitionId>(oldGrouped.Keys);
+                uniqueIds.UnionWith(newGrouped.Keys);
 
-                foreach (var id in hashSet.Where(id => InventoriesData.Storage_Dictionary.ContainsKey(id)))
+                foreach (var id in uniqueIds.Where(id => ReferenceData.ItemStorage.ContainsKey(id)))
                 {
+                    // Calculate the difference between old and new values
                     MyFixedPoint oldValueSum;
                     var oldAmount = oldGrouped.TryGetValue(id, out oldValueSum) ? oldValueSum : MyFixedPoint.Zero;
                     MyFixedPoint newValueSum;
@@ -121,17 +128,18 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     var result = newAmount - oldAmount;
 
                     // Update the dictionary with the difference
-                    InventoriesData.Storage_Dictionary[id] += result;
+                    ReferenceData.ItemStorage.TryUpdateValue(id, result);
                 }
 
-                // Updating the snapshot.
-                Snapshot[arg1] = newValue;
+                // Updating the snapshot with the new inventory state
+                Snapshot[inventory] = newValue;
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Inventory on volume changed error {ex}");
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Error in Inventory_OnVolumeChanged: {ex.Message}");
             }
         }
+
 
 
         public void Dispose()

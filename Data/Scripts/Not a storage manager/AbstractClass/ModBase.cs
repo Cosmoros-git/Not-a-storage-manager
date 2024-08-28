@@ -4,18 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass
 {
-    public abstract class ModBase
+    public abstract class ModBase:ModHeartRate
     {
         protected string ClassName => GetType().Name;
         protected const string TrashIdentifier = "[TRASH]";
-        protected static readonly Dictionary<string, string> EdgeCases = new Dictionary<string, string>()
-        {
-            { "MyObjectBuilder_Ore", "Ore_" },
-            { "MyObjectBuilder_Ingot", "Ingot_" }
-        };
 
         protected static readonly HashSet<string> CountedTypes = new HashSet<string>()
         {
@@ -24,6 +20,19 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass
             "MyObjectBuilder_Component",
             "MyObjectBuilder_AmmoMagazine"
         };
+
+        protected static readonly HashSet<string> NamingExceptions = new HashSet<string>()
+        {
+            "Stone",
+            "Ice",
+            "Crude Oil",
+            "Coal",
+            "Scrap Metal",
+        };
+
+        protected static readonly HashSet<string> UniqueModExceptions = new HashSet<string>()
+        {
+            "Heat",
+        };
     }
 }
-
