@@ -31,6 +31,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         public static Dictionary<IMyConveyorSorter, List<MyInventoryItemFilter>> FilterSorters =
             new Dictionary<IMyConveyorSorter, List<MyInventoryItemFilter>>();
+
         private readonly HashSet<MyDefinitionId> _changedDefinitions = new HashSet<MyDefinitionId>();
 
 
@@ -137,7 +138,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"Failed to remove a filter: {ex.Message}");
             }
         }
-        
+
         private void TrashSorterInitialize(HashSet<IMyConveyorSorter> myConveyorSorter)
         {
             foreach (var terminal in myConveyorSorter.Cast<IMyTerminalBlock>())
@@ -165,6 +166,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         public Dictionary<string, ModTuple> ParseAndFillCustomData(IMyTerminalBlock obj)
         {
+            MyAPIGateway.Utilities.ShowMessage(ClassName, "Parsing text into RawData");
             // This function is absolute hell show of data parsing.
             var data = obj.CustomData;
             var parsedData = new Dictionary<string, ModTuple>();
@@ -181,6 +183,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim())
                     .ToArray();
                 var itemDisplayName = parts[0];
+
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Item name debug {itemDisplayName}");
 
                 // If display name that player gave does not exist in my storage means or I don't care about it. Or its wrong.
                 MyDefinitionId definitionId;
@@ -220,7 +224,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             return parsedData;
         }
 
-
         private void ProcessChanges()
         {
             foreach (var definitionId in _changedDefinitions)
@@ -258,6 +261,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                                     AddToConveyorSorterFilter(sorter, definitionId);
                                 }
                             }
+
                             break;
 
                         case -1: // If the item is below the set limit
@@ -269,6 +273,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                                     RemoveFromConveyorSorterFilter(sorter, definitionId);
                                 }
                             }
+
                             break;
 
                         case 404:
@@ -300,6 +305,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         public void RawCustomDataTransformer(IMyConveyorSorter sorter, Dictionary<string, ModTuple> rawData)
         {
+            MyAPIGateway.Utilities.ShowMessage(ClassName, "Transforming data into system");
             if (sorter == null) return;
 
             // Ensure the sorter has an entry in MyItemLimitsCounts
@@ -348,6 +354,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
+            MyAPIGateway.Utilities.ShowMessage(ClassName, "Terminal data Changed");
             if (!_trashSorters.Contains(obj)) return;
 
             // Unsubscribe before making changes
@@ -392,8 +399,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void ClearWatchedListOfTerminal(IMyConveyorSorter sorter)
         {
-            if (MyItemLimitsCounts[sorter].Count <= 0) return;
-            foreach (var item in MyItemLimitsCounts[sorter])
+            Dictionary<MyDefinitionId, ModTuple> count;
+            if (!MyItemLimitsCounts.TryGetValue(sorter, out count) || count == null || count.Count <= 0)
+                return;
+
+            foreach (var item in count.Where(item => DictionaryTrackedValues.ContainsKey(item.Key)))
             {
                 DictionaryTrackedValues[item.Key] -= 1;
             }
@@ -403,21 +413,48 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         {
             try
             {
-                foreach (var terminal in _subscribedTerminalBlocks)
+                // Safeguard: Check if _subscribedTerminalBlocks is not null before iterating
+                if (_subscribedTerminalBlocks != null)
                 {
-                    Unsubscribe_Terminal_Block(terminal);
-                    terminal.OnClosing -= Terminal_OnClosing;
+                    foreach (var terminal in _subscribedTerminalBlocks)
+                    {
+                        try
+                        {
+                            if (terminal == null) continue;
+                            Unsubscribe_Terminal_Block(terminal);
+                            terminal.OnClosing -= Terminal_OnClosing;
+                        }
+                        catch (Exception ex)
+                        {
+                            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                                $"Error unsubscribing terminal block {terminal?.CustomName}: {ex}");
+                        }
+                    }
                 }
 
-                _itemStorage.ValueChanged -= OnValueChanged;
-                _trashSorters.Clear();
-                _subscribedTerminalBlocks.Clear();
-                _myConveyorSorter.Clear();
+                // Safeguard: Check if _itemStorage is not null before unsubscribing from ValueChanged event
+                if (_itemStorage != null)
+                {
+                    try
+                    {
+                        _itemStorage.ValueChanged -= OnValueChanged;
+                    }
+                    catch (Exception ex)
+                    {
+                        MyAPIGateway.Utilities.ShowMessage(ClassName,
+                            $"Error unsubscribing from ValueChanged event: {ex}");
+                    }
+                }
+
+                // Safeguard: Check if collections are not null before clearing
+                _trashSorters?.Clear();
+                _subscribedTerminalBlocks?.Clear();
+                _myConveyorSorter?.Clear();
             }
             catch (Exception ex)
             {
                 MyAPIGateway.Utilities.ShowMessage(ClassName,
-                    $"Error on dispose.{ex}");
+                    $"Error in Dispose method: {ex}");
             }
         }
     }

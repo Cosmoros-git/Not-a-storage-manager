@@ -40,6 +40,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     MyAPIGateway.Utilities.ShowMessage(ClassName, $"All inventories is somehow null?");
                     return;
                 }
+
+                
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Inventories count{AllInventories.Count}?");
                 foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
                 {
                     if (items == null)return;

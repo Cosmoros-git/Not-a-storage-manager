@@ -33,7 +33,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             _entity = entity;
             _varImyCubeBlock = (IMyCubeBlock)entity;
             _varIMyCubeGrid = _varImyCubeBlock.CubeGrid;
-            _entity.OnClosing += _entity_OnClosing;
+            _varImyCubeBlock.OnClosing += _entity_OnClosing;
         }
 
         private void _entity_OnClosing(IMyEntity obj)

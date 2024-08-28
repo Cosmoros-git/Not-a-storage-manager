@@ -48,11 +48,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 _grid.OnClosing += Grid_OnClosing;
                 _subscribedGrids.Add(_grid);
             }
+
             MyAPIGateway.Utilities.ShowMessage(ClassName, $"Initialized");
             Scan_Grids_For_Inventories();
             _manager = new ModSorterManager(_hashSetTrashConveyorSorter);
-            ModSorterAdded+= _manager.OnTrashSorterAdded;
-
+            ModSorterAdded += _manager.OnTrashSorterAdded;
         }
 
         private void Scan_Grids_For_Inventories()
@@ -92,6 +92,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"Congrats, all inventories scan fucked up {ex}");
             }
         }
+
         private void Add_Inventory_Blocks(IMyCubeBlock myCubeBlock)
         {
             // If no inventories return
@@ -121,6 +122,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
             }
         }
+
         private static void Remove_Inventories_From_Storage(int inventoryCount, IMyCubeBlock block)
         {
             for (var i = 0; i < inventoryCount; i++)
@@ -140,6 +142,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             var terminal = block as IMyTerminalBlock;
             return terminal != null && Is_Trash_Designation_Function(terminal);
         }
+
         private bool Is_Trash_Designation_Function(IMyTerminalBlock terminal)
         {
             var block = (IMyCubeBlock)terminal;
@@ -155,7 +158,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 else
                 {
                     var subtypeId = block.BlockDefinition.SubtypeId;
-                    if(SubtypeIdName.Contains(subtypeId))
+                    if (SubtypeIdName.Contains(subtypeId))
                     {
                         var sorter = block as IMyConveyorSorter;
                         _hashSetTrashConveyorSorter.Add(sorter);
@@ -175,14 +178,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         }
 
 
-
         private static bool Is_Conveyor_Sorter(IMyCubeBlock block)
         {
             var isConveyor = block as IMyConveyorSorter;
             return isConveyor != null;
         }
-
-
 
 
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
@@ -207,12 +207,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 if (_trashBlocks.Contains(block)) return;
 
                 // Remove all inventories associated with the block
-                Remove_Inventories_From_Storage(obj.InventoryCount,block);
+                Remove_Inventories_From_Storage(obj.InventoryCount, block);
 
                 // Add the block to the trash list
                 _trashBlocks.Add(block);
             }
         }
+
         private void MyGrid_OnFatBlockAdded(MyCubeBlock myCubeBlock)
         {
             var inventoryCount = myCubeBlock.InventoryCount;
@@ -224,15 +225,15 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
             if (Is_Trash_Designation_Function(myCubeBlock)) return;
 
-            Add_Inventories_To_Storage(inventoryCount,myCubeBlock);
+            Add_Inventories_To_Storage(inventoryCount, myCubeBlock);
         }
-
 
 
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             Scan_Grids_For_Inventories();
         }
+
         private void Grid_OnGridMerge(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
             if (_grid == arg2)
@@ -249,19 +250,19 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         }
 
 
-
-
         private void Grid_OnClosing(IMyEntity obj)
         {
             _grid.OnGridMerge -= Grid_OnGridMerge;
             _grid.OnGridSplit -= Grid_OnGridSplit;
             _grid.OnClosing -= Grid_OnClosing;
         }
+
         private void Unsubscribe_Terminal_Block(IMyCubeBlock cubeBlock)
         {
             var terminal = cubeBlock as IMyTerminalBlock;
             if (terminal != null) terminal.CustomDataChanged -= Terminal_CustomDataChanged;
         }
+
         private void MyCubeBlock_OnClosing(IMyEntity cube)
         {
             try
@@ -287,6 +288,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
             }
         }
+
         private void MyGrid_OnClosing(IMyEntity obj)
         {
             var myCubeBlock = (IMyCubeBlock)obj;
@@ -326,23 +328,50 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
             try
             {
-                foreach (var cubeGrid in _cubeGrids)
+                // Safeguard: Check if _cubeGrids is not null before iterating
+                if (_cubeGrids != null)
                 {
-                    MyGrid_OnClosing(cubeGrid);
+                    foreach (var cubeGrid in _cubeGrids)
+                    {
+                        try
+                        {
+                            if (cubeGrid != null)
+                            {
+                                MyGrid_OnClosing(cubeGrid);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                                $"Error closing grid {cubeGrid?.DisplayName}: {ex}");
+                        }
+                    }
                 }
-                ModSorterAdded -= _manager.OnTrashSorterAdded;
+
+                // Safeguard: Unsubscribe from events
+                try
+                {
+                    if (_manager != null) ModSorterAdded -= _manager.OnTrashSorterAdded;
+                }
+                catch (Exception ex)
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, $"Dispose, error on event unsubscription: {ex}");
+                }
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Dispose, error on un-sub {ex}");
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Dispose, error during cleanup: {ex}");
             }
-
-            _subscribedGrids.Clear();
-            _cubeGrids.Clear();
-            _cubeBlockWithInventory.Clear();
-            _trashBlocks.Clear();
-            _hashSetTrashConveyorSorter.Clear();
-            _subscribedTerminals.Clear();
+            finally
+            {
+                // Safeguard: Clear collections if they are not null
+                _subscribedGrids?.Clear();
+                _cubeGrids?.Clear();
+                _cubeBlockWithInventory?.Clear();
+                _trashBlocks?.Clear();
+                _hashSetTrashConveyorSorter?.Clear();
+                _subscribedTerminals?.Clear();
+            }
         }
     }
 }
