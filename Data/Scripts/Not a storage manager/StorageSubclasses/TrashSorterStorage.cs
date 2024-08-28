@@ -1,18 +1,13 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
-using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
-using VRageRender.Voxels;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses
 {
     public class TrashSorterStorage : ModBase
     {
@@ -59,6 +54,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             UnRegisterTerminal(obj);
 
             // Parse and update CustomData
+            if (obj.CustomData.Contains("[FillMe]"))
+            {
+                obj.CustomData = _itemStorage.GetDisplayNameListAsCustomData();
+            }
             var data = ParseAndFillCustomData(obj);
             var sorter = obj as IMyConveyorSorter;
             if (sorter != null)

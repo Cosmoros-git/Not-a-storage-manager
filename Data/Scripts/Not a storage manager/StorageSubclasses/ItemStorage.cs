@@ -108,12 +108,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             MyFixedPoint fixedPoint;
             return _definitionIdToFixedPoint.TryGetValue(definitionId, out fixedPoint) ? fixedPoint : -1;
         }
-        public List<string> GetDisplayNameList()
+        public string GetDisplayNameListAsCustomData()
         {
-            return _entryNames;
+            return string.Join("\n", _entryNames);
         }
 
-        
+
 
 
 

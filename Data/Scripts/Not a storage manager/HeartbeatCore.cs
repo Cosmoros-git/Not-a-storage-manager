@@ -1,11 +1,9 @@
 ﻿using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
-using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -15,9 +13,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         "SmallTrashController")]
     public class HeartbeatCore : MyGameLogicComponent
     {
-        private IMyCubeBlock _iBlock;
-        private IMyCubeGrid _iMyCubeGrid;
-        private MyCubeGrid _myCubeGrid;
         private int _amountOfLaunchTries;
 
         private int _initializationAttemptCounter = 0;

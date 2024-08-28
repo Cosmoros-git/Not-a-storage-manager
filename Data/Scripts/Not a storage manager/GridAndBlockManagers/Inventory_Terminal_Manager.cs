@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
@@ -18,7 +19,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private readonly HashSet<IMyTerminalBlock> _subscribedTerminals = new HashSet<IMyTerminalBlock>();
         private readonly HashSet<IMyCubeBlock> _trashBlocks = new HashSet<IMyCubeBlock>();
 
-        private readonly TrashSorterStorage _trashConveyorSorterStorage = ModAccessStatic.Instance.SortersStorage;
+        private readonly TrashSorterStorage _trashConveyorSorterStorage = ModAccessStatic.Instance.TrashSorterStorage;
 
 
         public void Select_Blocks_With_Inventory(IMyCubeBlock myCubeBlock)

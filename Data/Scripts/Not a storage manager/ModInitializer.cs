@@ -1,5 +1,4 @@
 ﻿using Sandbox.Game.Entities.Cube;
-using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
@@ -22,7 +21,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         private readonly IMyEntity _entity;
         private readonly IMyCubeBlock _varImyCubeBlock;
         private readonly IMyCubeGrid _varIMyCubeGrid;
-        private readonly MyCubeBlock _varImyCube;
 
         public ModAccessStatic GlobalStorageInstance;
         public GridScanner VarGridScannerManager;
@@ -35,7 +33,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             _entity = entity;
             _varImyCubeBlock = (IMyCubeBlock)entity;
             _varIMyCubeGrid = _varImyCubeBlock.CubeGrid;
-            _varImyCube = (MyCubeBlock)entity;
         }
 
         private static readonly Guid ManagedKey = new Guid("080d0d52-603a-4be5-933b-e6f9043ac22c");

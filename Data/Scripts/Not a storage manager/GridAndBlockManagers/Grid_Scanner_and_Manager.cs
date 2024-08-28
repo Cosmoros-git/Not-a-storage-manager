@@ -6,6 +6,7 @@ using System.Security.Policy;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
@@ -18,17 +19,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 {
     public class GridScanner : ModBase
     {
-        private event Action<IMyConveyorSorter> ModSorterAdded;
-
 
         private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
-        private readonly TrashSorterStorage _trashSorterStorage;
-
-        private static readonly string[] SubtypeIdName = { "LargeTrashSorter", "SmallTrashSorter" };
+        private readonly TrashSorterStorage _trashSorterStorage = ModAccessStatic.Instance.TrashSorterStorage;
 
         public readonly List<IMyCubeGrid> CubeGrids = new List<IMyCubeGrid>();
         private IMyCubeGrid _grid;
-        private readonly SorterFilterManager _conveyorSorterManager;
 
         public bool HasGlobalScanFinished;
         private readonly InventoryTerminalManager _inventoryBlocksManager;
@@ -50,7 +46,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
             MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning grid for inventories");
             Scan_Grids_For_Blocks_With_Inventories();
-            _conveyorSorterManager = new SorterFilterManager();
+            var sorterFilterManager = new SorterFilterManager();
             _inventoryBlocksManager = new InventoryTerminalManager();
         }
 

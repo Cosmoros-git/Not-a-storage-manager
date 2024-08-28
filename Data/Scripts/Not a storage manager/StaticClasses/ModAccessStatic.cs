@@ -20,7 +20,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
             Instance = this;
             ReferenceTable = new ReferenceDictionaryCreator();
             ItemStorage = new ItemStorage();
-            SortersStorage = new TrashSorterStorage();
+            TrashSorterStorage = new TrashSorterStorage();
             ItemLimitsStorage = new ItemLimitsStorage();
         }
 
@@ -28,6 +28,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
         public InventoryScanner InventoryScanner;
         public ItemStorage ItemStorage;
         public ReferenceDictionaryCreator ReferenceTable;
-        public TrashSorterStorage SortersStorage;
+        public TrashSorterStorage TrashSorterStorage;
     }
 }

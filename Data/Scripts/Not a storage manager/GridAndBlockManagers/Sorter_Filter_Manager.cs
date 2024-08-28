@@ -35,7 +35,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         public SorterFilterManager()
         {
-            _myConveyorSorter = ModAccessStatic.Instance.SortersStorage;
+            _myConveyorSorter = ModAccessStatic.Instance.TrashSorterStorage;
             _itemStorage = ModAccessStatic.Instance.ItemStorage;
             ResetConveyorsFilters();
 
@@ -87,7 +87,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                                 List<MyInventoryItemFilter> filterList;
                                 if (!FilterSorters.TryGetValue(sorter, out filterList))
                                 {
-                                    AddToConveyorSorterFilter(sorter, definitionId);
+                                    RemoveFromConveyorSorterFilter(sorter, definitionId);
                                 }
                                 else if (!filterList.Any(item => item.ItemId.Equals(definitionId)))
                                 {
@@ -111,7 +111,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
                         case 404:
                             MyAPIGateway.Utilities.ShowMessage(ClassName,
-                                $"Unexpected state for {definitionId.ToString()} in ProcessChanges.");
+                                $"Unexpected state for {definitionId} in ProcessChanges.");
                             break;
                     }
                 }

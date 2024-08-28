@@ -12,9 +12,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass
     {
         protected string ClassName => GetType().Name;
         protected const string TrashIdentifier = "[TRASH]";
-
-        protected static readonly string[] TrashSubtype = new []
-        {
+        protected static readonly string[] TrashSubtype = {
             "LargeTrashSorter",
             "SmallTrashSorter"
         };

@@ -29,8 +29,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning all inventories");
             _itemStorage = ModAccessStatic.Instance.ItemStorage;
         }
-
-
         public void ScanAllInventories()
         {
             try
@@ -91,7 +89,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"On add inventory error {ex}");
             }
         }
-
         public void RemoveInventory(MyInventory inventory)
         {
             try
