@@ -22,6 +22,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         private readonly IMyEntity _entity;
         private readonly IMyCubeBlock _varImyCubeBlock;
         private readonly IMyCubeGrid _varIMyCubeGrid;
+        private readonly MyCubeBlock _varImyCube;
 
         public ModAccessStatic GlobalStorageInstance;
         public GridScannerManager VarGridScannerManager;
@@ -33,22 +34,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             _entity = entity;
             _varImyCubeBlock = (IMyCubeBlock)entity;
             _varIMyCubeGrid = _varImyCubeBlock.CubeGrid;
-            _varImyCubeBlock.OnClosing += _entity_OnClosing;
-        }
-
-        private void _entity_OnClosing(IMyEntity obj)
-        {
-            // Check if this block is managing the grid before removing the storage value
-            if (IsGridManagedByThisBlock(_varIMyCubeGrid))
-            {
-                _varIMyCubeGrid.Storage?.RemoveValue(ManagedKey);
-            }
-
-            // Call Dispose to clean up resources
-            Dispose();
+            _varImyCube = (MyCubeBlock)entity;
         }
 
         private static readonly Guid ManagedKey = new Guid("080d0d52-603a-4be5-933b-e6f9043ac22c");
+        private readonly HashSet<IMyCubeGrid> _managedGrids = new HashSet<IMyCubeGrid>();
 
         // Check if the grid is already managed
         public bool IsGridManagedByThisBlock(IMyCubeGrid grid)
@@ -96,6 +86,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                 }
                 else if (!IsGridManagedByThisBlock(_varIMyCubeGrid))
                 {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Grid manager overlap");
                     IsThereGridManagerOverlap = true;
                     return false;
                 }
@@ -116,8 +107,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 
             MyAPIGateway.Utilities.ShowMessage(ClassName,
                 $"Grid: {_varIMyCubeGrid.DisplayName}, OwnerId: {_varImyCubeBlock.OwnerId}, Faction Tag: {_varImyCubeBlock.GetOwnerFactionTag()}");
-
-            HeartBeat100 += LoadingSequence;
+            _managedGrids.Add(_varIMyCubeGrid);
+            HeartBeat10 += LoadingSequence;
             return true;
         }
 
@@ -128,7 +119,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                 case 1:
                     // This step initializes reference tables and access to them for other class.
                     // Classes at play: GetDefinitions, CreateReferenceTables, ModAccessStatic
-
 
                     GlobalStorageInstance = new ModAccessStatic();
                     MyAPIGateway.Utilities.ShowMessage(ClassName,
@@ -163,18 +153,62 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                         ModAccessStatic.Instance.InventoryScanner.ScanAllInventories();
                         _loadingStep++;
                         VarGridScannerManager = new GridScannerManager(_entity);
+                        _managedGrids.UnionWith(VarGridScannerManager.CubeGrids);
                         MyAPIGateway.Utilities.ShowMessage(ClassName,
                             $"Loading sequence step 3");
                     }
 
                     break;
+
+
                 case 4:
+                    if (_managedGrids != null)
+                        foreach (var grid in _managedGrids)
+                        {
+                            MarkGridAsManaged(grid);
+                        }
+
+                    MyAPIGateway.Utilities.ShowMessage(ClassName,
+                        $"Loading sequence step 4");
                     break;
                 case 5:
                     break;
                 case 6:
                     break;
             }
+        }
+
+        private void RemoveManager(IMyCubeGrid grid)
+        {
+            if (grid.Storage == null) return;
+            if (!grid.Storage.ContainsKey(ManagedKey)) return;
+            // Log or notify that the grid is no longer managed
+            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Removing manager for grid: {grid.DisplayName}");
+
+            // Remove the managed key
+            grid.Storage.Clear();
+        }
+
+
+        public override void Dispose()
+        {
+            if (!IsGridManagedByThisBlock(_varIMyCubeGrid)) return;
+            if (_varIMyCubeGrid != null)
+            {
+                if (_managedGrids != null && _managedGrids.Count > 0)
+                {
+                    foreach (var grid in _managedGrids)
+                    {
+                        RemoveManager(grid);
+                    }
+                }
+                else
+                {
+                    RemoveManager(_varIMyCubeGrid);
+                }
+            }
+
+            MyAPIGateway.Utilities.ShowMessage(ClassName, "Removing block as manager");
         }
     }
 }

@@ -154,6 +154,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         public void OnTrashSorterAdded(IMyConveyorSorter myConveyorSorter)
         {
+            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                $"Trash sorter added");
             var terminal = myConveyorSorter as IMyTerminalBlock;
             Subscribe_Terminal_Block(terminal);
 
@@ -374,10 +376,33 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void Unsubscribe_Terminal_Block(IMyTerminalBlock terminal)
         {
-            if (!_subscribedTerminalBlocks.Contains(terminal)) return;
-            terminal.CustomDataChanged -= Terminal_CustomDataChanged;
-            _subscribedTerminalBlocks.Remove(terminal);
+            if (terminal == null)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName,
+                    "Unsubscribe_Terminal_Block: Attempted to unsubscribe a null terminal block.");
+                return; // Safeguard: Check if terminal is null
+            }
+
+            try
+            {
+                if (_subscribedTerminalBlocks.Contains(terminal))
+                {
+                    terminal.CustomDataChanged -= Terminal_CustomDataChanged;
+                    _subscribedTerminalBlocks.Remove(terminal);
+                }
+                else
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName,
+                        $"Unsubscribe_Terminal_Block: Terminal block {terminal.CustomName} was not found in the subscribed list.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName,
+                    $"Error unsubscribing terminal block {terminal.CustomName}: {ex.Message}");
+            }
         }
+
 
         private void Subscribe_Terminal_Block(IMyTerminalBlock terminal)
         {
@@ -390,12 +415,41 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void Terminal_OnClosing(IMyEntity obj)
         {
-            Unsubscribe_Terminal_Block(obj as IMyTerminalBlock);
-            var sorter = (IMyConveyorSorter)obj;
-            MyItemLimitsCounts.Remove(sorter);
-            _trashSorters.Remove(sorter);
-            ClearWatchedListOfTerminal(sorter);
+            if (obj == null) return; // Safeguard: Check if obj is null
+
+            try
+            {
+                var terminalBlock = obj as IMyTerminalBlock;
+                if (terminalBlock != null)
+                {
+                    Unsubscribe_Terminal_Block(terminalBlock);
+                }
+                else
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName,
+                        "Terminal_OnClosing: Unable to unsubscribe terminal block as it was null or of wrong type.");
+                }
+
+                var sorter = obj as IMyConveyorSorter;
+                if (sorter != null)
+                {
+                    // Remove the sorter from relevant collections
+                    MyItemLimitsCounts.Remove(sorter);
+                    _trashSorters.Remove(sorter);
+                    ClearWatchedListOfTerminal(sorter);
+                }
+                else
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName,
+                        "Terminal_OnClosing: Object is not a valid IMyConveyorSorter.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Error in Terminal_OnClosing: {ex.Message}");
+            }
         }
+
 
         private void ClearWatchedListOfTerminal(IMyConveyorSorter sorter)
         {

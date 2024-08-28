@@ -30,7 +30,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private readonly HashSet<IMyConveyorSorter> _hashSetTrashConveyorSorter = new HashSet<IMyConveyorSorter>();
         private static readonly string[] SubtypeIdName = { "LargeTrashSorter", "SmallTrashSorter" };
 
-        private readonly List<IMyCubeGrid> _cubeGrids = new List<IMyCubeGrid>();
+        public readonly List<IMyCubeGrid> CubeGrids = new List<IMyCubeGrid>();
         private IMyCubeGrid _grid;
         private readonly ModSorterManager _manager;
 
@@ -49,7 +49,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 _subscribedGrids.Add(_grid);
             }
 
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Initialized");
+            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning grid for inventories");
             Scan_Grids_For_Inventories();
             _manager = new ModSorterManager(_hashSetTrashConveyorSorter);
             ModSorterAdded += _manager.OnTrashSorterAdded;
@@ -65,9 +65,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     _cubeBlockWithInventory.Clear();
                 }
 
-                _grid.GetGridGroup(GridLinkTypeEnum.Mechanical).GetGrids(_cubeGrids);
+                _grid.GetGridGroup(GridLinkTypeEnum.Mechanical).GetGrids(CubeGrids);
 
-                foreach (var myGrid in _cubeGrids)
+                foreach (var myGrid in CubeGrids)
                 {
                     if (!_subscribedGrids.Contains(myGrid))
                     {
@@ -218,6 +218,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         {
             var inventoryCount = myCubeBlock.InventoryCount;
             if (inventoryCount < 0) return;
+            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                $"Adding an inventory block");
             myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
             _cubeBlockWithInventory.Add(myCubeBlock);
             Is_Conveyor_Sorter(myCubeBlock);
@@ -231,6 +233,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
+            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                $"Grid_OnSplit happend");
             Scan_Grids_For_Inventories();
         }
 
@@ -245,7 +249,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 Dispose();
                 return;
             }
-
+            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                $"Grid_OnMerge happend");
             Scan_Grids_For_Inventories();
         }
 
@@ -329,9 +334,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             try
             {
                 // Safeguard: Check if _cubeGrids is not null before iterating
-                if (_cubeGrids != null)
+                if (CubeGrids != null)
                 {
-                    foreach (var cubeGrid in _cubeGrids)
+                    foreach (var cubeGrid in CubeGrids)
                     {
                         try
                         {
@@ -366,7 +371,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             {
                 // Safeguard: Clear collections if they are not null
                 _subscribedGrids?.Clear();
-                _cubeGrids?.Clear();
+                CubeGrids?.Clear();
                 _cubeBlockWithInventory?.Clear();
                 _trashBlocks?.Clear();
                 _hashSetTrashConveyorSorter?.Clear();

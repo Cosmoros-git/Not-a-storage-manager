@@ -105,7 +105,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public override void Close()
         {
             //new PhysicalStorageManager(_myGridScanData, _myCubeGrid); // Saves data into Json.
+            _iModInitializer.Dispose();
             NeedsUpdate = MyEntityUpdateEnum.NONE;
+            MyAPIGateway.Utilities.ShowMessage("HeartbeatCore","Close called.");
             base.Close();
         }
     }
