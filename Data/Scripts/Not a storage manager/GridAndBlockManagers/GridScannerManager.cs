@@ -161,8 +161,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     if (SubtypeIdName.Contains(subtypeId))
                     {
                         var sorter = block as IMyConveyorSorter;
-                        _hashSetTrashConveyorSorter.Add(sorter);
-                        ModSorterAdded?.Invoke(sorter);
+                        if (!_hashSetTrashConveyorSorter.Contains(sorter))
+                        {
+                            _hashSetTrashConveyorSorter.Add(sorter);
+                            ModSorterAdded?.Invoke(sorter);
+                        }
                     }
                 }
             }
@@ -249,6 +252,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 Dispose();
                 return;
             }
+
             MyAPIGateway.Utilities.ShowMessage(ClassName,
                 $"Grid_OnMerge happend");
             Scan_Grids_For_Inventories();

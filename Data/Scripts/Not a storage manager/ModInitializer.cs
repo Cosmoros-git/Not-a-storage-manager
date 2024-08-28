@@ -27,6 +27,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public ModAccessStatic GlobalStorageInstance;
         public GridScannerManager VarGridScannerManager;
         public bool IsThereGridManagerOverlap;
+        private bool _hasBeenMarkedMessage;
 
 
         public ModInitializer(IMyEntity entity)
@@ -53,13 +54,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         // Mark the grid as managed
         public void MarkGridAsManaged(IMyCubeGrid grid)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Marking grid as managed by this block");
+            if(!_hasBeenMarkedMessage) MyAPIGateway.Utilities.ShowMessage(ClassName, $"Marking grid as managed by this block");
             if (grid.Storage == null)
             {
                 grid.Storage = new MyModStorageComponent();
             }
 
             grid.Storage.SetValue(ManagedKey, _varImyCubeBlock.EntityId.ToString());
+            _hasBeenMarkedMessage= true;
         }
 
 
@@ -170,6 +172,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 
                     MyAPIGateway.Utilities.ShowMessage(ClassName,
                         $"Loading sequence step 4");
+                    _loadingStep++;
                     break;
                 case 5:
                     break;
