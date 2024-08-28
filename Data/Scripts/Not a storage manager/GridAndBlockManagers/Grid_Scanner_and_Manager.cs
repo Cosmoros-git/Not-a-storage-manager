@@ -11,9 +11,7 @@ using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using VRage.Library.Collections;
 using VRage.ModAPI;
-using IMyConveyorSorter = Sandbox.ModAPI.IMyConveyorSorter;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 {
@@ -24,10 +22,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private readonly TrashSorterStorage _trashSorterStorage = ModAccessStatic.Instance.TrashSorterStorage;
         private readonly InventoryTerminalManager _inventoryBlocksManager = ModAccessStatic.Instance.InventoryTerminalManager;
 
-        public readonly List<IMyCubeGrid> CubeGrids = new List<IMyCubeGrid>();
+        public readonly HashSet<IMyCubeGrid> CubeGrids = new HashSet<IMyCubeGrid>();
         private IMyCubeGrid _grid;
 
-        private bool IsItNotAFirstScan;
+        private bool _isItNotAFirstScan;
         public bool HasGlobalScanFinished;
 
 
@@ -56,11 +54,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             {
                 // Check if InventoryScanner exists and AllInventories is not null
                 if (ModAccessStatic.Instance?.InventoryScanner?.AllInventories != null &&
-                    ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0 && IsItNotAFirstScan)
+                    ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0 && _isItNotAFirstScan)
                 {
                     ModAccessStatic.Instance.InventoryScanner.Dispose();
                 }
-                IsItNotAFirstScan = true;
+                _isItNotAFirstScan = true;
 
                 // Ensure _grid is not null before getting grid group
                 if (_grid == null)
@@ -81,10 +79,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 {
                     if (!_subscribedGrids.Contains(myGrid))
                     {
-                        var myCubeGrid = myGrid as MyCubeGrid;
-                        if (myCubeGrid != null)
+                        if (myGrid != null)
                         {
-                            myCubeGrid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
+                            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Subbing to.{myGrid.CustomName}");
+                            myGrid.OnBlockAdded += MyGrid_OnFatBlockAdded;
                             myGrid.OnClosing += MyGrid_OnClosing;
                             _subscribedGrids.Add(myGrid);
                         }
@@ -130,18 +128,22 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
 
 
-        private void MyGrid_OnFatBlockAdded(MyCubeBlock myCubeBlock)
+        private void MyGrid_OnFatBlockAdded(IMySlimBlock mySlimBlock)
         {
-            var inventoryCount = myCubeBlock.InventoryCount;
+            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Adding an block");
+            var fatBlock = mySlimBlock.FatBlock;
+            if (fatBlock == null) return;
+            var inventoryCount = fatBlock.InventoryCount;
             if (inventoryCount < 0) return;
-            MyAPIGateway.Utilities.ShowMessage(ClassName,
-                $"Adding an inventory block");
-            myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
+
+            fatBlock.OnClosing += MyCubeBlock_OnClosing;
 
 
-            if (_inventoryBlocksManager.Is_This_Trash_Block(myCubeBlock)) return;
+            if (_inventoryBlocksManager.Is_This_Trash_Block(fatBlock)) return;
 
-           _inventoryBlocksManager.Add_Inventories_To_Storage(inventoryCount, myCubeBlock);
+            _inventoryBlocksManager.Add_Inventories_To_Storage(inventoryCount, fatBlock);
+
+
         }
 
         // Todo optimize this
@@ -203,8 +205,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private void MyGrid_OnClosing(IMyEntity obj)
         {
             obj.OnClosing -= MyGrid_OnClosing;
-            var myCubeGrid = (MyCubeGrid)obj;
-            myCubeGrid.OnFatBlockAdded -= MyGrid_OnFatBlockAdded;
+            var myCubeGrid = (IMyCubeGrid)obj;
+            myCubeGrid.OnBlockAdded -= MyGrid_OnFatBlockAdded;
             _subscribedGrids.Remove(myCubeGrid);
             var cubes = myCubeGrid.GetFatBlocks<MyCubeBlock>().Where(x => x.InventoryCount > 0);
             foreach (var cube in cubes)

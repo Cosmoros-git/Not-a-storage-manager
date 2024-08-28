@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.ModAPI;
@@ -42,6 +43,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
 
         public void ForceUpdateAllSorters()
         {
+            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Forcing all sorters to update {TrashSorters.Count}");
             foreach (var sorter in TrashSorters)
             {
                 Terminal_CustomDataChanged(sorter);

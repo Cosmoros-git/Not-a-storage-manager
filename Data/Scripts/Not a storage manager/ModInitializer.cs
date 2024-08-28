@@ -177,7 +177,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     break;
             }
         }
-
         private void RemoveManager(IMyCubeGrid grid)
         {
             if (grid.Storage == null) return;
