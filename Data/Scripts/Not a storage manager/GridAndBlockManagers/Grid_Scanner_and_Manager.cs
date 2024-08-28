@@ -22,16 +22,17 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
         private readonly TrashSorterStorage _trashSorterStorage = ModAccessStatic.Instance.TrashSorterStorage;
+        private readonly InventoryTerminalManager _inventoryBlocksManager = ModAccessStatic.Instance.InventoryTerminalManager;
 
         public readonly List<IMyCubeGrid> CubeGrids = new List<IMyCubeGrid>();
         private IMyCubeGrid _grid;
 
+        private bool IsItNotAFirstScan;
         public bool HasGlobalScanFinished;
-        private readonly InventoryTerminalManager _inventoryBlocksManager;
+
 
         public GridScanner(IMyEntity entity)
         {
-            ModAccessStatic.Instance.InventoryScanner = new InventoryScanner();
             var block = (IMyCubeBlock)entity;
             _grid = block.CubeGrid;
 
@@ -46,36 +47,75 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
             MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning grid for inventories");
             Scan_Grids_For_Blocks_With_Inventories();
-            var sorterFilterManager = new SorterFilterManager();
-            _inventoryBlocksManager = new InventoryTerminalManager();
+
         }
 
         private void Scan_Grids_For_Blocks_With_Inventories()
         {
             try
             {
-                if (ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0)
+                // Check if InventoryScanner exists and AllInventories is not null
+                if (ModAccessStatic.Instance?.InventoryScanner?.AllInventories != null &&
+                    ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0 && IsItNotAFirstScan)
                 {
                     ModAccessStatic.Instance.InventoryScanner.Dispose();
                 }
+                IsItNotAFirstScan = true;
 
-                _grid.GetGridGroup(GridLinkTypeEnum.Mechanical).GetGrids(CubeGrids);
+                // Ensure _grid is not null before getting grid group
+                if (_grid == null)
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Grid is null.");
+                    return;
+                }
 
+                _grid.GetGridGroup(GridLinkTypeEnum.Mechanical)?.GetGrids(CubeGrids);
+
+                // Ensure CubeGrids is initialized and has grids to process
+                if (CubeGrids == null || CubeGrids.Count == 0)
+                {
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, "No grids found in CubeGrids.");
+                    return;
+                }
                 foreach (var myGrid in CubeGrids)
                 {
                     if (!_subscribedGrids.Contains(myGrid))
                     {
-                        var myCubeGrid = (MyCubeGrid)_grid;
-                        myCubeGrid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
-                        myGrid.OnClosing += MyGrid_OnClosing;
-                        _subscribedGrids.Add(myGrid);
+                        var myCubeGrid = myGrid as MyCubeGrid;
+                        if (myCubeGrid != null)
+                        {
+                            myCubeGrid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
+                            myGrid.OnClosing += MyGrid_OnClosing;
+                            _subscribedGrids.Add(myGrid);
+                        }
+                        else
+                        {
+
+                            MyAPIGateway.Utilities.ShowMessage(ClassName, "Failed to cast grid to MyCubeGrid.");
+                            return;
+                        }
                     }
 
-                    var cubes = myGrid.GetFatBlocks<IMyCubeBlock>();
+                    var cubes = myGrid?.GetFatBlocks<IMyCubeBlock>();
+
+                    // Ensure cubes is not null before processing
+                    if (cubes == null)
+                    {
+                        MyAPIGateway.Utilities.ShowMessage(ClassName, "No fat blocks found in grid.");
+                        continue;
+                    }
 
                     foreach (var myCubeBlock in cubes)
                     {
-                        _inventoryBlocksManager.Select_Blocks_With_Inventory(myCubeBlock);
+                        if (_inventoryBlocksManager != null)
+                        {
+                            _inventoryBlocksManager.Select_Blocks_With_Inventory(myCubeBlock);
+                        }
+                        else
+                        {
+                            MyAPIGateway.Utilities.ShowMessage(ClassName, "_inventoryBlocksManager is null.");
+                            return;
+                        }
                     }
                 }
 
@@ -84,11 +124,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Congrats, all inventories scan fucked up {ex}");
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Congrats, all inventories scan messed up: {ex}");
             }
         }
 
-       
+
+
         private void MyGrid_OnFatBlockAdded(MyCubeBlock myCubeBlock)
         {
             var inventoryCount = myCubeBlock.InventoryCount;

@@ -14,7 +14,7 @@ using VRageRender.Messages;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 {
-    internal class InventoryTerminalManager : ModBase
+    public class InventoryTerminalManager : ModBase
     {
         private readonly HashSet<IMyTerminalBlock> _subscribedTerminals = new HashSet<IMyTerminalBlock>();
         private readonly HashSet<IMyCubeBlock> _trashBlocks = new HashSet<IMyCubeBlock>();
@@ -29,17 +29,27 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             if (inventoryCount <= 0) return;
 
             myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
-            // Search for Sorters
+
+            // Ensure the block can be cast to IMyConveyorSorter or is a terminal block
             var iMyConveyorSorter = myCubeBlock as IMyConveyorSorter;
             if (iMyConveyorSorter != null)
+            {
                 if (_trashConveyorSorterStorage.Add(iMyConveyorSorter))
                     return;
-            // If block is names trash don't add it to the inventories
-            SubscribeBlock(myCubeBlock);
+            }
+
+            // If block is not a terminal block, we may want to handle it differently or skip
+            if (myCubeBlock is IMyTerminalBlock)
+            {
+                SubscribeBlock(myCubeBlock);
+                return;
+            }
+
+            // If block is named trash don't add it to the inventories
             if (Is_This_Trash_Block(myCubeBlock)) return;
             Add_Inventories_To_Storage(inventoryCount, myCubeBlock);
-            
         }
+
 
 
         public void Add_Inventories_To_Storage(int inventoryCount, IMyCubeBlock block)
@@ -102,12 +112,19 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         }
         public void UnsubscribeBlock(IMyCubeBlock block)
         {
-            var terminal = (IMyTerminalBlock)block;
-            if (terminal == null) return;
-            if (!_subscribedTerminals.Contains(terminal)) return;
-            terminal.CustomDataChanged -= Terminal_CustomDataChanged;
-            _subscribedTerminals.Remove(terminal);
+            var terminal = block as IMyTerminalBlock;
+            if (terminal != null)
+            {
+                if (!_subscribedTerminals.Contains(terminal)) return;
+                terminal.CustomDataChanged -= Terminal_CustomDataChanged;
+                _subscribedTerminals.Remove(terminal);
+            }
+            else
+            {
+                MyAPIGateway.Utilities.ShowMessage("UnsubscribeBlock", "Block is not an IMyTerminalBlock: " + block.DisplayNameText);
+            }
         }
+
 
 
 

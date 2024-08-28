@@ -23,8 +23,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             if (sorter == null) return false;
             if (!TrashSubtype.Contains(sorter.BlockDefinition.SubtypeId)) return false;
             TrashSorters.Add(sorter);
-            RegisterTerminal(block);
+            RegisterTerminal(block as IMyAssembler);
             block.OnClosing += Block_OnClosing;
+            MyAPIGateway.Utilities.ShowMessage(ClassName,"Trash sorter added");
             return true;
         }
         public bool Remove(IMyCubeBlock block)
@@ -33,6 +34,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             if (sorter == null) return false;
             if (!TrashSorters.Contains(sorter)) return false;
             TrashSorters.Remove(sorter);
+            MyAPIGateway.Utilities.ShowMessage(ClassName, "Trash sorter removed");
             return true;
         }
 
