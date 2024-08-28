@@ -18,12 +18,16 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
         public ModAccessStatic()
         {
             Instance = this;
-            ReferenceTable = new CreateReferenceTable();
+            ReferenceTable = new ReferenceDictionaryCreator();
             ItemStorage = new ItemStorage();
+            SortersStorage = new TrashSorterStorage();
+            ItemLimitsStorage = new ItemLimitsStorage();
         }
 
+        public ItemLimitsStorage ItemLimitsStorage;
         public InventoryScanner InventoryScanner;
         public ItemStorage ItemStorage;
-        public CreateReferenceTable ReferenceTable;
+        public ReferenceDictionaryCreator ReferenceTable;
+        public TrashSorterStorage SortersStorage;
     }
 }

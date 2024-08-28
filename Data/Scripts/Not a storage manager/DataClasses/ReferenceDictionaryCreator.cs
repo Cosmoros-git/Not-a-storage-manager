@@ -14,7 +14,7 @@ using VRage.Utils;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
-    public class CreateReferenceTable : ModBase
+    public class ReferenceDictionaryCreator : ModBase
     {
         // ReSharper disable InconsistentNaming
 
@@ -23,7 +23,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
         public List<string> Possible_Display_Name_Entries = new List<string>();
 
-        public CreateReferenceTable()
+        public ReferenceDictionaryCreator()
         {
             ItemStorage = new ItemStorage();
             try

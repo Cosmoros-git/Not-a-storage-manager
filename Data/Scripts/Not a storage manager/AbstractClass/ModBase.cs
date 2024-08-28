@@ -13,6 +13,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass
         protected string ClassName => GetType().Name;
         protected const string TrashIdentifier = "[TRASH]";
 
+        protected static readonly string[] TrashSubtype = new []
+        {
+            "LargeTrashSorter",
+            "SmallTrashSorter"
+        };
+
         protected static readonly HashSet<string> CountedTypes = new HashSet<string>()
         {
             "MyObjectBuilder_Ingot",

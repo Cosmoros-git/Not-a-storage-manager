@@ -25,7 +25,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         private readonly MyCubeBlock _varImyCube;
 
         public ModAccessStatic GlobalStorageInstance;
-        public GridScannerManager VarGridScannerManager;
+        public GridScanner VarGridScannerManager;
         public bool IsThereGridManagerOverlap;
         private bool _hasBeenMarkedMessage;
 
@@ -141,7 +141,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     }
                     else
                     {
-                        VarGridScannerManager = new GridScannerManager(_entity);
+                        VarGridScannerManager = new GridScanner(_entity);
                         MyAPIGateway.Utilities.ShowMessage(ClassName,
                             $"Loading sequence step 2");
                     }
@@ -154,7 +154,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                         if (!VarGridScannerManager.HasGlobalScanFinished) return;
                         ModAccessStatic.Instance.InventoryScanner.ScanAllInventories();
                         _loadingStep++;
-                        VarGridScannerManager = new GridScannerManager(_entity);
+                        VarGridScannerManager = new GridScanner(_entity);
                         _managedGrids.UnionWith(VarGridScannerManager.CubeGrids);
                         MyAPIGateway.Utilities.ShowMessage(ClassName,
                             $"Loading sequence step 3");

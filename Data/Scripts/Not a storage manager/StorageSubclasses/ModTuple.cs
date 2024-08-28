@@ -2,8 +2,7 @@
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses
 {
-
-    internal struct ModTuple
+    public struct ModTuple
     {
         public MyFixedPoint Limit { get; set; }
         public float ToleranceRange { get; set; }
