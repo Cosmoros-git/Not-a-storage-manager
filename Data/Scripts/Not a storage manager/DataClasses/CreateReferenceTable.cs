@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
+using Sandbox.Game.Screens.Helpers.RadialMenuActions;
 using Sandbox.ModAPI;
 using VRage;
 using VRage.Game;
@@ -13,7 +14,7 @@ using VRage.Utils;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
-    public class CreateReferenceTable : ModBase, IDisposable
+    public class CreateReferenceTable : ModBase
     {
         // ReSharper disable InconsistentNaming
 
@@ -24,12 +25,26 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
         public CreateReferenceTable()
         {
-            InitializeStorages();
             ItemStorage = new ItemStorage();
+            try
+            {
+                InitializeStorages();
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Creating all reference tables");
+            }
+            catch (Exception ex)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName,$"Congrats, this fucked up {ex}");
+            }
+
         }
 
         private void InitializeStorages()
         {
+            if (GetDefinitions.Instance == null)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName, "GetDefinitions.Instance is null. Initialization aborted.");
+                return;
+            }
             foreach (var definition in GetDefinitions.Instance.AmmoDefinition)
             {
                 var name = definition.DisplayNameText;
@@ -68,7 +83,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             Possible_Display_Name_Entries.Add(name);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             try
             {

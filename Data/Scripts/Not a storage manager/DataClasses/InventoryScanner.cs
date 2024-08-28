@@ -5,6 +5,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game;
 using VRage;
 using VRage.Game;
@@ -14,33 +15,48 @@ using IMyInventory = VRage.Game.ModAPI.IMyInventory;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
-    public class InventoryScanner : ModBase, IDisposable
+    public class InventoryScanner : ModBase
     {
         public HashSet<MyInventory> AllInventories = new HashSet<MyInventory>();
-        public Dictionary<MyInventory, List<MyPhysicalInventoryItem>> Snapshot = new Dictionary<MyInventory, List<MyPhysicalInventoryItem>>();
 
+        public Dictionary<MyInventory, List<MyPhysicalInventoryItem>> Snapshot =
+            new Dictionary<MyInventory, List<MyPhysicalInventoryItem>>();
 
-        public CreateReferenceTable ReferenceData = new CreateReferenceTable();
+        private readonly ItemStorage _itemStorage;
+
         public InventoryScanner()
         {
-            ScanAllInventories();
+            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning all inventories");
+            _itemStorage = ModAccessStatic.Instance.ItemStorage;
         }
 
 
-        private void ScanAllInventories()
+        public void ScanAllInventories()
         {
-            var modInventory = ReferenceData.ItemStorage;
-            foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
+            try
             {
-                foreach (var item in items)
+                if (AllInventories == null)
                 {
-                    var definitionId = item.GetDefinitionId();
-                    if(!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
-                    modInventory.TryUpdateValue(definitionId, item.Amount);
+                    MyAPIGateway.Utilities.ShowMessage(ClassName, $"All inventories is somehow null?");
+                    return;
                 }
+                foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
+                {
+                    if (items == null)return;
+                    foreach (var item in items)
+                    {
+                        var definitionId = item.GetDefinitionId();
+                        if (!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
+                        _itemStorage.TryUpdateValue(definitionId, item.Amount);
+                    }
 
-                // Clear the list to prepare for the next inventory
-                items.Clear();
+                    // Clear the list to prepare for the next inventory
+                    items.Clear();
+                }
+            }
+            catch (Exception ex)
+            {
+                MyAPIGateway.Utilities.ShowMessage(ClassName,$"Congrats, all inventories scan fucked up {ex}");
             }
         }
 
@@ -49,7 +65,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                var modInventory = ReferenceData.ItemStorage;
                 var myInventory = (MyInventory)inventory;
                 AllInventories.Add(myInventory);
                 if (!inventory.Empty())
@@ -59,7 +74,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     {
                         var definitionId = item.GetDefinitionId();
                         if (!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
-                        modInventory.TryUpdateValue(definitionId, item.Amount);
+                        _itemStorage.TryUpdateValue(definitionId, item.Amount);
                     }
 
                     // Clear the list to prepare for the next inventory
@@ -73,6 +88,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"On add inventory error {ex}");
             }
         }
+
         public void RemoveInventory(MyInventory inventory)
         {
             try
@@ -86,6 +102,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyAPIGateway.Utilities.ShowMessage(ClassName, $"On remove inventory error {ex}");
             }
         }
+
         private void Inventory_OnVolumeChanged(IMyInventory arg1, float arg2, float arg3)
         {
             try
@@ -117,7 +134,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 var uniqueIds = new HashSet<MyDefinitionId>(oldGrouped.Keys);
                 uniqueIds.UnionWith(newGrouped.Keys);
 
-                foreach (var id in uniqueIds.Where(id => ReferenceData.ItemStorage.ContainsKey(id)))
+                foreach (var id in uniqueIds.Where(id => _itemStorage.ContainsKey(id)))
                 {
                     // Calculate the difference between old and new values
                     MyFixedPoint oldValueSum;
@@ -128,7 +145,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     var result = newAmount - oldAmount;
 
                     // Update the dictionary with the difference
-                    ReferenceData.ItemStorage.TryUpdateValue(id, result);
+                    _itemStorage.TryUpdateValue(id, result);
                 }
 
                 // Updating the snapshot with the new inventory state
@@ -141,8 +158,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         }
 
 
-
-        public void Dispose()
+        public override void Dispose()
         {
             try
             {

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
     <CubeBlocks>
         <Definition xsi:type="MyObjectBuilder_ConveyorSorterDefinition">
@@ -30,7 +30,7 @@
                 <Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\ConveyorSorterConstruction_2.mwm" />
                 <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\ConveyorSorterConstruction_3.mwm" />
             </BuildProgressModels>
-            <BlockPairName>ConveyorSorter</BlockPairName>
+            <BlockPairName></BlockPairName>
             <MirroringY>Z</MirroringY>
             <MirroringZ>Y</MirroringZ>
             <EdgeType>Light</EdgeType>
@@ -80,7 +80,7 @@
                 <Model BuildPercentUpperBound="0.50" File="Models\Cubes\Small\ConveyorSorterSmallConstruction_1.mwm" />
                 <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\ConveyorSorterSmallConstruction_2.mwm" />
             </BuildProgressModels>
-            <BlockPairName>ConveyorSorterSmall</BlockPairName>
+            <BlockPairName></BlockPairName>
             <MirroringY>Z</MirroringY>
             <MirroringZ>Y</MirroringZ>
             <EdgeType>Light</EdgeType>
@@ -106,7 +106,7 @@
             <Definition xsi:type="MyObjectBuilder_ProgrammableBlockDefinition">
             <Id>
                 <TypeId>MyProgrammableBlock</TypeId>
-                <SubtypeId>LargeMyTrashController</SubtypeId>
+                <SubtypeId>LargeTrashController</SubtypeId>
             </Id>
             <Public>true</Public>
             <DisplayName>Large trash controller</DisplayName>
@@ -136,7 +136,7 @@
                 <ScreenArea Name="CockpitScreen_02" DisplayName="DisplayName_Screen_Large" TextureResolution="512" ScreenWidth="16" ScreenHeight="10" />
                 <ScreenArea Name="CockpitScreen_01" DisplayName="DisplayName_Screen_Keyboard" TextureResolution="256" ScreenWidth="5" ScreenHeight="2" />
             </ScreenAreas>
-            <BlockPairName>ProgrammableBlock</BlockPairName>
+            <BlockPairName></BlockPairName>
             <MirroringY>Z</MirroringY>
             <MirroringZ>Y</MirroringZ>
             <EdgeType>Light</EdgeType>
@@ -157,7 +157,7 @@
                 <Definition xsi:type="MyObjectBuilder_ProgrammableBlockDefinition">
             <Id>
                 <TypeId>MyProgrammableBlock</TypeId>
-                <SubtypeId>SmallMyTrashController</SubtypeId>
+                <SubtypeId>SmallTrashController</SubtypeId>
             </Id>
             <Public>true</Public>
             <DisplayName>Small trash Controller</DisplayName>
@@ -182,7 +182,7 @@
                 <Model BuildPercentUpperBound="0.50" File="Models\Cubes\Small\ProgrammingBlockConstruction_1.mwm" />
                 <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Small\ProgrammingBlockConstruction_2.mwm" />
             </BuildProgressModels>
-            <BlockPairName>ProgrammableBlock</BlockPairName>
+            <BlockPairName></BlockPairName>
             <MirroringZ>Y</MirroringZ>
             <MirroringY>Z</MirroringY>
             <EdgeType>Light</EdgeType>

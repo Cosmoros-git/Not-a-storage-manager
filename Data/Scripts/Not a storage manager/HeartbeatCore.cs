@@ -2,6 +2,7 @@
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
@@ -31,8 +32,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         {
             base.Init(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+            MyAPIGateway.Utilities.ShowMessage("Heartbeat core", "Block loaded");
             _iModInitializer = new ModInitializer(Entity);
         }
+
 
         public override void UpdateOnceBeforeFrame()
         {
@@ -40,6 +43,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             if (_initialized) return;
             if (!_iModInitializer.VerifyLaunch())
             {
+                if(_amountOfLaunchTries==0)MyAPIGateway.Utilities.ShowMessage("Heartbeat core", "Verify launch failed. Trying again.");
                 if (_isItOnStandBy) return;
                 _amountOfLaunchTries++;
 

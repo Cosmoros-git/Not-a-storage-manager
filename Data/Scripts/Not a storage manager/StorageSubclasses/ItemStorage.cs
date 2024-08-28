@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using VRage.Game;
 using VRage;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses
 {
-    public class ItemStorage
+    public class ItemStorage:ModBase
     {
         private readonly Dictionary<MyDefinitionId, string> _definitionIdToName =
             new Dictionary<MyDefinitionId, string>();
@@ -107,7 +108,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             MyFixedPoint fixedPoint;
             return _definitionIdToFixedPoint.TryGetValue(definitionId, out fixedPoint) ? fixedPoint : -1;
         }
-
         public List<string> GetDisplayNameList()
         {
             return _entryNames;
@@ -121,5 +121,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         {
             ValueChanged?.Invoke(obj);
         }
+
     }
 }

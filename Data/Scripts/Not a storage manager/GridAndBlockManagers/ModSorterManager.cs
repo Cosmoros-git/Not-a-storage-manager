@@ -16,7 +16,7 @@ using MyConveyorSorterMode = Sandbox.ModAPI.Ingame.MyConveyorSorterMode;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 {
-    internal class ModSorterManager : ModBase, IDisposable
+    internal class ModSorterManager : ModBase
     {
         private readonly HashSet<IMyConveyorSorter> _myConveyorSorter;
 
@@ -399,7 +399,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             try
             {

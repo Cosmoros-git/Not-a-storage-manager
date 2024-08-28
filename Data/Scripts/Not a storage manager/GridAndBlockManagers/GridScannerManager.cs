@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Policy;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Game;
 using Sandbox.Game.Entities;
@@ -15,7 +16,7 @@ using IMyConveyorSorter = Sandbox.ModAPI.IMyConveyorSorter;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers
 {
-    public class GridScannerManager : ModBase, IDisposable
+    public class GridScannerManager : ModBase
     {
         private event Action<IMyConveyorSorter> ModSorterAdded;
 
@@ -33,8 +34,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private IMyCubeGrid _grid;
         private readonly ModSorterManager _manager;
 
+        public bool HasGlobalScanFinished;
+
         public GridScannerManager(IMyEntity entity)
         {
+            ModAccessStatic.Instance.InventoryScanner = new InventoryScanner();
             var block = (IMyCubeBlock)entity;
             _grid = block.CubeGrid;
             _grid.OnGridMerge += Grid_OnGridMerge;
@@ -44,38 +48,48 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 _grid.OnClosing += Grid_OnClosing;
                 _subscribedGrids.Add(_grid);
             }
-
+            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Initialized");
             Scan_Grids_For_Inventories();
             _manager = new ModSorterManager(_hashSetTrashConveyorSorter);
             ModSorterAdded+= _manager.OnTrashSorterAdded;
+
         }
 
         private void Scan_Grids_For_Inventories()
         {
-            if (ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0)
+            try
             {
-                ModAccessStatic.Instance.InventoryScanner.Dispose();
-                _cubeBlockWithInventory.Clear();
+                if (ModAccessStatic.Instance.InventoryScanner.AllInventories.Count > 0)
+                {
+                    ModAccessStatic.Instance.InventoryScanner.Dispose();
+                    _cubeBlockWithInventory.Clear();
+                }
+
+                _grid.GetGridGroup(GridLinkTypeEnum.Mechanical).GetGrids(_cubeGrids);
+
+                foreach (var myGrid in _cubeGrids)
+                {
+                    if (!_subscribedGrids.Contains(myGrid))
+                    {
+                        var myCubeGrid = (MyCubeGrid)_grid;
+                        myCubeGrid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
+                        myGrid.OnClosing += MyGrid_OnClosing;
+                        _subscribedGrids.Add(myGrid);
+                    }
+
+                    var cubes = myGrid.GetFatBlocks<IMyCubeBlock>();
+
+                    foreach (var myCubeBlock in cubes)
+                    {
+                        Add_Inventory_Blocks(myCubeBlock);
+                    }
+                }
+
+                HasGlobalScanFinished = true;
             }
-
-            _grid.GetGridGroup(GridLinkTypeEnum.Mechanical).GetGrids(_cubeGrids);
-
-            foreach (var myGrid in _cubeGrids)
+            catch (Exception ex)
             {
-                if (!_subscribedGrids.Contains(myGrid))
-                {
-                    var myCubeGrid = (MyCubeGrid)_grid;
-                    myCubeGrid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
-                    myGrid.OnClosing += MyGrid_OnClosing;
-                    _subscribedGrids.Add(myGrid);
-                }
-
-                var cubes = myGrid.GetFatBlocks<IMyCubeBlock>();
-
-                foreach (var myCubeBlock in cubes)
-                {
-                    Add_Inventory_Blocks(myCubeBlock);
-                }
+                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Congrats, all inventories scan fucked up {ex}");
             }
         }
         private void Add_Inventory_Blocks(IMyCubeBlock myCubeBlock)
@@ -307,7 +321,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
             try
