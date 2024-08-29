@@ -4,6 +4,7 @@ using Sandbox.Common.ObjectBuilders;
 using Sandbox.ModAPI;
 using VRage.Game;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
@@ -11,24 +12,26 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 {
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_MyProgrammableBlock), false, "LargeTrashController",
         "SmallTrashController")]
-    public class HeartbeatCore : MyGameLogicComponent
+    public class ModHeartbeatCore : MyGameLogicComponent
     {
         private int _amountOfLaunchTries;
 
-        private int _initializationAttemptCounter = 0;
+        private int _initializationAttemptCounter;
         private const int AttemptsPerMinute = 60 * 60 / 100;
         private bool _initialized;
 
         private bool _isItOnStandBy;
         private ModInitializer _iModInitializer;
+        public static ModLogger Logger;
 
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            MyAPIGateway.Utilities.ShowMessage("Heartbeat core", "Block loaded");
-            _iModInitializer = new ModInitializer(Entity);
+            Logger = new ModLogger("TrashManager");
+            Logger.Log("Heartbeat core", "Block loaded");
+            _iModInitializer = new ModInitializer(Entity,Logger);
         }
 
 
@@ -38,7 +41,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             if (_initialized) return;
             if (!_iModInitializer.VerifyLaunch())
             {
-                if(_amountOfLaunchTries==0)MyAPIGateway.Utilities.ShowMessage("Heartbeat core", "Verify launch failed. Trying again.");
+                if (_amountOfLaunchTries == 0)
+                    Logger.LogError("Heartbeat core", "Verify launch failed. Trying again.");
                 if (_isItOnStandBy) return;
                 _amountOfLaunchTries++;
 
@@ -55,6 +59,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                 }
 
                 return;
+            }
+            else
+            {
+                var grid = (IMyCubeBlock)Entity;
+                Logger.GridId = grid.CubeGrid.CustomName;
             }
 
             // Initialization successful
@@ -102,7 +111,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             //new PhysicalStorageManager(_myGridScanData, _myCubeGrid); // Saves data into Json.
             _iModInitializer.Dispose();
             NeedsUpdate = MyEntityUpdateEnum.NONE;
-            MyAPIGateway.Utilities.ShowMessage("HeartbeatCore","Close called.");
+            Logger?.Log("ModHeartBeatCore","Close called.");
+
             base.Close();
         }
     }

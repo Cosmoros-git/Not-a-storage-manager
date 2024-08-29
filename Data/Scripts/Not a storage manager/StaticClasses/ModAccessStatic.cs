@@ -14,25 +14,35 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
 {
     public class ModAccessStatic
     {
-        public static ModAccessStatic Instance { get; set; }
+        public static ModAccessStatic Instance { get; private set; }
+
+        public ReferenceDictionaryCreator ReferenceTable { get; private set; }
+        public ItemLimitsStorage ItemLimitsStorage { get; private set; }
+        public ItemDefinitionStorage ItemDefinitionStorage { get; private set; }
+        public InventoryScanner InventoryScanner { get; private set; }
+        public TrashSorterStorage TrashSorterStorage { get; private set; }
+        public InventoryTerminalManager InventoryTerminalManager { get; private set; }
+
+        public ModLogger Logger { get; set; }
 
         public ModAccessStatic()
         {
             Instance = this;
-            ReferenceTable = new ReferenceDictionaryCreator();
-            ItemStorage = new ItemStorage();
-            TrashSorterStorage = new TrashSorterStorage();
-            ItemLimitsStorage = new ItemLimitsStorage();
-            InventoryScanner = new InventoryScanner();
-            InventoryTerminalManager = new InventoryTerminalManager();
         }
-        public ReferenceDictionaryCreator ReferenceTable;
-        public ItemLimitsStorage ItemLimitsStorage;
-        public ItemStorage ItemStorage;
-        public InventoryScanner InventoryScanner;
 
-
-        public TrashSorterStorage TrashSorterStorage;
-        public InventoryTerminalManager InventoryTerminalManager;
+        public void InitiateValues(ReferenceDictionaryCreator referenceTable,
+            ItemLimitsStorage itemLimitsStorage,
+            ItemDefinitionStorage itemDefinitionStorage,
+            InventoryScanner inventoryScanner,
+            TrashSorterStorage trashSorterStorage,
+            InventoryTerminalManager inventoryTerminalManager)
+        {
+            ReferenceTable = referenceTable;
+            ItemLimitsStorage = itemLimitsStorage;
+            ItemDefinitionStorage = itemDefinitionStorage;
+            InventoryScanner = inventoryScanner;
+            TrashSorterStorage = trashSorterStorage;
+            InventoryTerminalManager = inventoryTerminalManager;
+        }
     }
 }

@@ -17,35 +17,29 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 {
     public class GridScanner : ModBase
     {
-
-        private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
-        private readonly TrashSorterStorage _trashSorterStorage = ModAccessStatic.Instance.TrashSorterStorage;
-        private readonly InventoryTerminalManager _inventoryBlocksManager = ModAccessStatic.Instance.InventoryTerminalManager;
-
         public readonly HashSet<IMyCubeGrid> CubeGrids = new HashSet<IMyCubeGrid>();
+        private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
+        private readonly TrashSorterStorage _trashSorterStorage;
+        private readonly InventoryTerminalManager _inventoryBlocksManager;
+        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
+
+
         private IMyCubeGrid _grid;
 
         private bool _isItNotAFirstScan;
         public bool HasGlobalScanFinished;
 
-
-        public GridScanner(IMyEntity entity)
+        public GridScanner(IMyCubeBlock entity, TrashSorterStorage trashSorterStorage, InventoryTerminalManager inventoryTerminalManager)
         {
-            var block = (IMyCubeBlock)entity;
-            _grid = block.CubeGrid;
+            _grid = entity.CubeGrid;
+            _trashSorterStorage = trashSorterStorage;
+            _inventoryBlocksManager = inventoryTerminalManager;
 
             _grid.OnGridMerge += Grid_OnGridMerge;
             _grid.OnGridSplit += Grid_OnGridSplit;
 
-            if (!_subscribedGrids.Contains(_grid))
-            {
-                _grid.OnClosing += Grid_OnClosing;
-                _subscribedGrids.Add(_grid);
-            }
-
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning grid for inventories");
+            _modLogger.Log(ClassName, $"Scanning grid for inventories");
             Scan_Grids_For_Blocks_With_Inventories();
-
         }
 
         private void Scan_Grids_For_Blocks_With_Inventories()
@@ -58,12 +52,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 {
                     ModAccessStatic.Instance.InventoryScanner.Dispose();
                 }
+
                 _isItNotAFirstScan = true;
 
                 // Ensure _grid is not null before getting grid group
                 if (_grid == null)
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Grid is null.");
+                    _modLogger.LogError(ClassName, "Grid is null.");
                     return;
                 }
 
@@ -72,24 +67,25 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 // Ensure CubeGrids is initialized and has grids to process
                 if (CubeGrids == null || CubeGrids.Count == 0)
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, "No grids found in CubeGrids.");
+                    _modLogger.LogError(ClassName, "No grids found in CubeGrids.");
                     return;
                 }
+
                 foreach (var myGrid in CubeGrids)
                 {
                     if (!_subscribedGrids.Contains(myGrid))
                     {
                         if (myGrid != null)
                         {
-                            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Subbing to.{myGrid.CustomName}");
-                            myGrid.OnBlockAdded += MyGrid_OnFatBlockAdded;
+                            _modLogger.Log(ClassName, $"Subbing to.{myGrid.CustomName}");
+                            var grid = (MyCubeGrid)myGrid;
+                            grid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
                             myGrid.OnClosing += MyGrid_OnClosing;
                             _subscribedGrids.Add(myGrid);
                         }
                         else
                         {
-
-                            MyAPIGateway.Utilities.ShowMessage(ClassName, "Failed to cast grid to MyCubeGrid.");
+                            _modLogger.LogError(ClassName, "Failed to cast grid to MyCubeGrid.");
                             return;
                         }
                     }
@@ -99,7 +95,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     // Ensure cubes is not null before processing
                     if (cubes == null)
                     {
-                        MyAPIGateway.Utilities.ShowMessage(ClassName, "No fat blocks found in grid.");
+                        _modLogger.LogWarning(ClassName, "No fat blocks found in grid.");
                         continue;
                     }
 
@@ -111,7 +107,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                         }
                         else
                         {
-                            MyAPIGateway.Utilities.ShowMessage(ClassName, "_inventoryBlocksManager is null.");
+                            _modLogger.LogError(ClassName, "_inventoryBlocksManager is null.");
                             return;
                         }
                     }
@@ -122,17 +118,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Congrats, all inventories scan messed up: {ex}");
+                _modLogger.LogError(ClassName, $"Congrats, all inventories scan messed up: {ex}");
             }
         }
 
 
-
-        private void MyGrid_OnFatBlockAdded(IMySlimBlock mySlimBlock)
+        private void MyGrid_OnFatBlockAdded(MyCubeBlock fatBlock)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Adding an block");
-            var fatBlock = mySlimBlock.FatBlock;
-            if (fatBlock == null) return;
             var inventoryCount = fatBlock.InventoryCount;
             if (inventoryCount < 0) return;
 
@@ -142,8 +134,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             if (_inventoryBlocksManager.Is_This_Trash_Block(fatBlock)) return;
 
             _inventoryBlocksManager.Add_Inventories_To_Storage(inventoryCount, fatBlock);
-
-
         }
 
         // Todo optimize this
@@ -177,8 +167,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             _grid.OnGridMerge -= Grid_OnGridMerge;
             _grid.OnGridSplit -= Grid_OnGridSplit;
             _grid.OnClosing -= Grid_OnClosing;
-
         }
+
         private void MyCubeBlock_OnClosing(IMyEntity cube)
         {
             try
@@ -204,9 +194,16 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void MyGrid_OnClosing(IMyEntity obj)
         {
+            
             obj.OnClosing -= MyGrid_OnClosing;
             var myCubeGrid = (IMyCubeGrid)obj;
-            myCubeGrid.OnBlockAdded -= MyGrid_OnFatBlockAdded;
+            if (myCubeGrid == _grid)
+            {
+                myCubeGrid.OnGridMerge-= Grid_OnGridMerge;
+                myCubeGrid.OnGridSplit-= Grid_OnGridSplit;
+            }
+            var grid = (MyCubeGrid)myCubeGrid;
+            grid.OnFatBlockAdded -= MyGrid_OnFatBlockAdded;
             _subscribedGrids.Remove(myCubeGrid);
             var cubes = myCubeGrid.GetFatBlocks<MyCubeBlock>().Where(x => x.InventoryCount > 0);
             foreach (var cube in cubes)

@@ -22,25 +22,26 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         public Dictionary<MyInventory, List<MyPhysicalInventoryItem>> Snapshot =
             new Dictionary<MyInventory, List<MyPhysicalInventoryItem>>();
 
-        private readonly ItemStorage _itemStorage;
+        private readonly ModLogger _logger = ModAccessStatic.Instance.Logger;
+        private readonly ItemDefinitionStorage _itemDefinitionStorage;
 
-        public InventoryScanner()
+        public InventoryScanner(ItemDefinitionStorage itemDefinitionStorage)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Scanning all inventories");
-            _itemStorage = ModAccessStatic.Instance.ItemStorage;
+            _itemDefinitionStorage = itemDefinitionStorage;
         }
+
         public void ScanAllInventories()
         {
             try
             {
                 if (AllInventories == null)
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, $"All inventories is somehow null?");
+                    _logger.LogWarning(ClassName, $"All inventories is somehow null");
                     return;
                 }
 
-                
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Inventories count{AllInventories.Count}?");
+
+                _logger.Log(ClassName, $"Inventories count{AllInventories.Count}");
                 foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
                 {
                     if (items == null)return;
@@ -48,7 +49,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     {
                         var definitionId = item.GetDefinitionId();
                         if (!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
-                        _itemStorage.TryUpdateValue(definitionId, item.Amount);
+                        _itemDefinitionStorage.TryUpdateValue(definitionId, item.Amount);
                     }
 
                     // Clear the list to prepare for the next inventory
@@ -57,7 +58,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName,$"Congrats, all inventories scan fucked up {ex}");
+                _logger.LogError(ClassName,$"Congrats, all inventories scan fucked up {ex}");
             }
         }
 
@@ -75,7 +76,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     {
                         var definitionId = item.GetDefinitionId();
                         if (!CountedTypes.Contains(definitionId.TypeId.ToString())) continue;
-                        _itemStorage.TryUpdateValue(definitionId, item.Amount);
+                        _itemDefinitionStorage.TryUpdateValue(definitionId, item.Amount);
                     }
 
                     // Clear the list to prepare for the next inventory
@@ -86,7 +87,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"On add inventory error {ex}");
+                _logger.LogError(ClassName, $"On add inventory error {ex}");
             }
         }
         public void RemoveInventory(MyInventory inventory)
@@ -99,7 +100,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"On remove inventory error {ex}");
+                _logger.LogError(ClassName, $"On remove inventory error {ex}");
             }
         }
 
@@ -134,7 +135,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 var uniqueIds = new HashSet<MyDefinitionId>(oldGrouped.Keys);
                 uniqueIds.UnionWith(newGrouped.Keys);
 
-                foreach (var id in uniqueIds.Where(id => _itemStorage.ContainsKey(id)))
+                foreach (var id in uniqueIds.Where(id => _itemDefinitionStorage.ContainsKey(id)))
                 {
                     // Calculate the difference between old and new values
                     MyFixedPoint oldValueSum;
@@ -145,7 +146,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     var result = newAmount - oldAmount;
 
                     // Update the dictionary with the difference
-                    _itemStorage.TryUpdateValue(id, result);
+                    _itemDefinitionStorage.TryUpdateValue(id, result);
                 }
 
                 // Updating the snapshot with the new inventory state
@@ -162,7 +163,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
+                _logger.LogWarning(ClassName, "OnDispose was called");
                 foreach (var inventory in AllInventories)
                 {
                     inventory.OnVolumeChanged -= Inventory_OnVolumeChanged;
@@ -173,7 +174,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"On dispose error {ex}");
+                _logger.LogError(ClassName, $"On dispose error {ex}");
             }
         }
     }

@@ -11,6 +11,8 @@ using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using Sandbox.Game.EntityComponents;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 {
@@ -27,10 +29,18 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public bool IsThereGridManagerOverlap;
         private bool _hasBeenMarkedMessage;
 
+        // ReSharper disable once InconsistentNaming
+        private readonly ModLogger Logger;
 
-        public ModInitializer(IMyEntity entity)
+
+        public ModInitializer(IMyEntity entity, ModLogger logger)
         {
             _entity = entity;
+            Logger = logger;
+            var modAccessStatic = new ModAccessStatic
+            {
+                Logger = Logger
+            };
             _varImyCubeBlock = (IMyCubeBlock)entity;
             _varIMyCubeGrid = _varImyCubeBlock.CubeGrid;
         }
@@ -51,14 +61,15 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         // Mark the grid as managed
         public void MarkGridAsManaged(IMyCubeGrid grid)
         {
-            if(!_hasBeenMarkedMessage) MyAPIGateway.Utilities.ShowMessage(ClassName, $"Marking grid as managed by this block");
+            if (!_hasBeenMarkedMessage)
+                Logger.Log(ClassName, "Marking grid as managed by this block");
             if (grid.Storage == null)
             {
                 grid.Storage = new MyModStorageComponent();
             }
 
             grid.Storage.SetValue(ManagedKey, _varImyCubeBlock.EntityId.ToString());
-            _hasBeenMarkedMessage= true;
+            _hasBeenMarkedMessage = true;
         }
 
 
@@ -68,13 +79,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             {
                 if (_varImyCubeBlock == null || _varIMyCubeGrid == null)
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Block or Grid is null.");
+                    Logger.LogError(ClassName, "Block or Grid is null.");
                     return false;
                 }
 
                 if (_varIMyCubeGrid.Physics == null)
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Grid has no physics. Retrying in the next frame...");
+                    Logger.LogError(ClassName, "Grid has no physics. Retrying in the next frame...");
                     return false;
                 }
 
@@ -85,7 +96,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                 }
                 else if (!IsGridManagedByThisBlock(_varIMyCubeGrid))
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, "Grid manager overlap");
+                    Logger.LogError(ClassName, "Grid manager overlap");
                     IsThereGridManagerOverlap = true;
                     return false;
                 }
@@ -93,7 +104,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             else if (_varIMyCubeGrid.Storage == null || !IsGridManagedByThisBlock(_varIMyCubeGrid))
             {
                 if (!IsThereGridManagerOverlap)
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, $"There is manager block overlap");
+                    Logger.LogError(ClassName, $"There is manager block overlap");
                 IsThereGridManagerOverlap = true;
 
                 return false;
@@ -104,7 +115,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             }
 
 
-            MyAPIGateway.Utilities.ShowMessage(ClassName,
+            Logger.Log(ClassName,
                 $"Grid: {_varIMyCubeGrid.DisplayName}, OwnerId: {_varImyCubeBlock.OwnerId}, Faction Tag: {_varImyCubeBlock.GetOwnerFactionTag()}");
             _managedGrids.Add(_varIMyCubeGrid);
             HeartBeat10 += LoadingSequence;
@@ -119,8 +130,19 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     // This step initializes reference tables and access to them for other class.
                     // Classes at play: GetDefinitions, CreateReferenceTables, ModAccessStatic
 
-                    GlobalStorageInstance = new ModAccessStatic();
-                    MyAPIGateway.Utilities.ShowMessage(ClassName,
+
+                    var referenceDictionaryCreator = new ReferenceDictionaryCreator();
+                    var itemDefinitionStorage = new ItemDefinitionStorage();
+                    var itemStorage = new ItemDefinitionStorage();
+                    var itemLimitsStorage = new ItemLimitsStorage();
+
+                    var trashSorterStorage = new TrashSorterStorage(itemStorage);
+                    var inventoryScanner = new InventoryScanner(itemDefinitionStorage);
+                    var inventoryTerminalManager = new InventoryTerminalManager(trashSorterStorage);
+
+                    ModAccessStatic.Instance.InitiateValues(referenceDictionaryCreator, itemLimitsStorage,
+                        itemDefinitionStorage, inventoryScanner, trashSorterStorage, inventoryTerminalManager);
+                    Logger.Log(ClassName,
                         $"Loading sequence step 1");
                     _loadingStep++;
                     break;
@@ -138,8 +160,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     }
                     else
                     {
-                        VarGridScannerManager = new GridScanner(_entity);
-                        MyAPIGateway.Utilities.ShowMessage(ClassName,
+                        VarGridScannerManager = new GridScanner(_entity as IMyCubeBlock,
+                            ModAccessStatic.Instance.TrashSorterStorage,
+                            ModAccessStatic.Instance.InventoryTerminalManager);
+                        Logger.Log(ClassName,
                             $"Loading sequence step 2");
                     }
 
@@ -151,9 +175,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                         if (!VarGridScannerManager.HasGlobalScanFinished) return;
                         ModAccessStatic.Instance.InventoryScanner.ScanAllInventories();
                         _loadingStep++;
-                        VarGridScannerManager = new GridScanner(_entity);
                         _managedGrids.UnionWith(VarGridScannerManager.CubeGrids);
-                        MyAPIGateway.Utilities.ShowMessage(ClassName,
+                        Logger.Log(ClassName,
                             $"Loading sequence step 3");
                     }
 
@@ -167,7 +190,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                             MarkGridAsManaged(grid);
                         }
 
-                    MyAPIGateway.Utilities.ShowMessage(ClassName,
+                    Logger.Log(ClassName,
                         $"Loading sequence step 4");
                     _loadingStep++;
                     break;
@@ -177,15 +200,16 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     break;
             }
         }
+
         private void RemoveManager(IMyCubeGrid grid)
         {
             if (grid.Storage == null) return;
             if (!grid.Storage.ContainsKey(ManagedKey)) return;
             // Log or notify that the grid is no longer managed
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Removing manager for grid: {grid.DisplayName}");
+            Logger.LogWarning(ClassName, $"Removing manager for grid: {grid.DisplayName}");
 
             // Remove the managed key
-            grid.Storage.Clear();
+            grid.Storage.RemoveValue(ManagedKey);
         }
 
 

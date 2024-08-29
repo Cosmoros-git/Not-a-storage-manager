@@ -19,7 +19,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 {
     internal class SorterFilterManager : ModBase
     {
-        private readonly TrashSorterStorage _myConveyorSorter;
+        private readonly TrashSorterStorage _myTrashSorterStorage;
 
 
         public Dictionary<IMyConveyorSorter, Dictionary<MyDefinitionId, ModTuple>> MyItemLimitsCounts =
@@ -31,20 +31,22 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             new Dictionary<IMyConveyorSorter, List<MyInventoryItemFilter>>();
 
         private readonly HashSet<MyDefinitionId> _changedDefinitions = new HashSet<MyDefinitionId>();
-        private readonly ItemStorage _itemStorage;
+        private readonly ItemDefinitionStorage _itemDefinitionStorage;
+        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
 
-        public SorterFilterManager()
+
+        public SorterFilterManager(TrashSorterStorage trashSorterStorage, ItemDefinitionStorage itemDefinitionStorage)
         {
-            _myConveyorSorter = ModAccessStatic.Instance.TrashSorterStorage;
-            _itemStorage = ModAccessStatic.Instance.ItemStorage;
+            _myTrashSorterStorage = trashSorterStorage;
+            _itemDefinitionStorage = itemDefinitionStorage;
             ResetConveyorsFilters();
 
-            _itemStorage.ValueChanged += OnValueChanged;
+            _itemDefinitionStorage.ValueChanged += OnValueChanged;
             HeartBeat100 += HeartbeatInstance_HeartBeat100;
         }
         private void ResetConveyorsFilters()
         {
-            foreach (var sorter in _myConveyorSorter.TrashSorters)
+            foreach (var sorter in _myTrashSorterStorage.TrashSorters)
             {
                 if (!sorter.CustomData.Contains("[TRASH COLLECTOR]")) continue;
                 var emptyFilter = new List<MyInventoryItemFilter>();
@@ -73,7 +75,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
                     // Retrieve the current value for this definitionId
                     MyFixedPoint value;
-                    if (!_itemStorage.TryGetValue(definitionId, out value)) continue;
+                    if (!_itemDefinitionStorage.TryGetValue(definitionId, out value)) continue;
 
                     // Check whether the current value is above or below the limit
                     var result = AboveLimitCheck(modTuple.Limit, modTuple.MaxValue, value);
@@ -110,7 +112,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                             break;
 
                         case 404:
-                            MyAPIGateway.Utilities.ShowMessage(ClassName,
+                            _modLogger.LogError(ClassName,
                                 $"Unexpected state for {definitionId} in ProcessChanges.");
                             break;
                     }
@@ -153,7 +155,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Failed to add to filter: {ex.Message}");
+                _modLogger.LogError(ClassName, $"Failed to add to filter: {ex.Message}");
             }
         }
         private void RemoveFromConveyorSorterFilter(IMyConveyorSorter sorterIn, MyDefinitionId subtypeId)
@@ -186,7 +188,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Failed to remove a filter: {ex.Message}");
+                _modLogger.LogError(ClassName, $"Failed to remove a filter: {ex.Message}");
             }
         }
 
@@ -209,14 +211,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         public override void Dispose()
         {
             // Safeguard: Check if _itemStorage is not null before unsubscribing from ValueChanged event
-            if (_itemStorage == null) return;
+            if (_itemDefinitionStorage == null) return;
             try
             {
-                _itemStorage.ValueChanged -= OnValueChanged;
+                _itemDefinitionStorage.ValueChanged -= OnValueChanged;
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName,
+                _modLogger.LogError(ClassName,
                     $"Error unsubscribing from ValueChanged event: {ex}");
             }
         }

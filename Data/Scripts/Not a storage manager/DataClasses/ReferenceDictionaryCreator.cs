@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game.Screens.Helpers.RadialMenuActions;
 using Sandbox.ModAPI;
@@ -18,47 +19,47 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
     {
         // ReSharper disable InconsistentNaming
 
-        public ItemStorage ItemStorage;
+        public ItemDefinitionStorage ItemDefinitionStorage;
 
-
+        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
         public List<string> Possible_Display_Name_Entries = new List<string>();
 
         public ReferenceDictionaryCreator()
         {
-            ItemStorage = new ItemStorage();
+            ItemDefinitionStorage = new ItemDefinitionStorage();
             try
             {
                 InitializeStorages();
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Creating all reference tables");
+                _modLogger.Log(ClassName, $"Creating all reference tables");
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName,$"Congrats, this fucked up {ex}");
+                _modLogger.LogError(ClassName,$"Congrats, this fucked up {ex}");
             }
 
         }
 
         private void InitializeStorages()
         {
-            if (GetDefinitions.Instance == null)
+            if (PreLoadGetDefinitions.Instance == null)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, "GetDefinitions.Instance is null. Initialization aborted.");
+                _modLogger.LogError(ClassName, "GetDefinitions.Instance is null. Initialization aborted.");
                 return;
             }
-            foreach (var definition in GetDefinitions.Instance.AmmoDefinition)
+            foreach (var definition in PreLoadGetDefinitions.Instance.AmmoDefinition)
             {
                 var name = definition.DisplayNameText;
                 FillDictionary(definition, name);
             }
 
-            foreach (var definition in GetDefinitions.Instance.ComponentsDefinitions)
+            foreach (var definition in PreLoadGetDefinitions.Instance.ComponentsDefinitions)
             {
                 var name = definition.DisplayNameText;
                 FillDictionary(definition, name);
             }
 
             // Ore Definitions - Prefixed with "ore_"
-            foreach (var definition in GetDefinitions.Instance.OresDefinitions)
+            foreach (var definition in PreLoadGetDefinitions.Instance.OresDefinitions)
             {
                 var name = definition.DisplayNameText;
                 if(UniqueModExceptions.Contains(name)) continue;
@@ -70,7 +71,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
 
             // Ingot Definitions - Prefixed with "ingot_"
-            foreach (var definition in GetDefinitions.Instance.IngotDefinitions)
+            foreach (var definition in PreLoadGetDefinitions.Instance.IngotDefinitions)
             {
                 var name = definition.DisplayNameText;
                 FillDictionary(definition, name);
@@ -79,7 +80,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
         private void FillDictionary(MyDefinitionBase definition, string name)
         {
-            ItemStorage.Add(name, definition.Id, 0);
+            ItemDefinitionStorage.Add(name, definition.Id, 0);
             Possible_Display_Name_Entries.Add(name);
         }
 
@@ -87,13 +88,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, "OnDispose was called");
-                ItemStorage = null;
+                _modLogger.LogWarning(ClassName, "OnDispose was called");
+                ItemDefinitionStorage = null;
                 Possible_Display_Name_Entries.Clear();
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"On dispose error {ex}");
+                _modLogger.LogError(ClassName, $"On dispose error {ex}");
             }
         }
     }

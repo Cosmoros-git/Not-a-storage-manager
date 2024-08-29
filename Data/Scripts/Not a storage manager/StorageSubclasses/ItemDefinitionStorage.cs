@@ -9,7 +9,7 @@ using VRage;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses
 {
-    public class ItemStorage:ModBase
+    public class ItemDefinitionStorage:ModBase
     {
         private readonly Dictionary<MyDefinitionId, string> _definitionIdToName =
             new Dictionary<MyDefinitionId, string>();

@@ -12,7 +12,7 @@ using VRage.Utils;
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 {
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
-    public class GetDefinitions : MySessionComponentBase
+    public class PreLoadGetDefinitions : MySessionComponentBase
     {
         private DictionaryValuesReader<MyDefinitionId, MyDefinitionBase> _allDefinitions;
 
@@ -20,7 +20,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public List<MyDefinitionBase> OresDefinitions;
         public List<MyDefinitionBase> IngotDefinitions;
         public List<MyDefinitionBase> AmmoDefinition;
-        public static GetDefinitions Instance { get; private set; }
+        public static PreLoadGetDefinitions Instance { get; private set; }
 
         public override void LoadData()
         {

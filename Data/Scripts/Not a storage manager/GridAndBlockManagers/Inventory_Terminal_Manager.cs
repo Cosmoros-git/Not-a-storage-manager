@@ -18,9 +18,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
     {
         private readonly HashSet<IMyTerminalBlock> _subscribedTerminals = new HashSet<IMyTerminalBlock>();
         private readonly HashSet<IMyCubeBlock> _trashBlocks = new HashSet<IMyCubeBlock>();
+        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
+        private readonly TrashSorterStorage _trashConveyorSorterStorage;
 
-        private readonly TrashSorterStorage _trashConveyorSorterStorage = ModAccessStatic.Instance.TrashSorterStorage;
-
+        public InventoryTerminalManager(TrashSorterStorage trashSorterStorage)
+        {
+            _trashConveyorSorterStorage = trashSorterStorage;
+        }
 
         public void Select_Blocks_With_Inventory(IMyCubeBlock myCubeBlock)
         {
@@ -130,7 +134,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName,"Normal inventory block custom data change.");
+            _modLogger.Log(ClassName,"Normal inventory block custom data change.");
             var block = (IMyCubeBlock)obj;
 
             // Check if the block is not designated as trash

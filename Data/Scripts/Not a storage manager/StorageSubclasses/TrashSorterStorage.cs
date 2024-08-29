@@ -16,7 +16,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         private readonly HashSet<IMyTerminalBlock> _subscribedTerminals = new HashSet<IMyTerminalBlock>();
         private const int DefaultAmount = 0;
         private const float DefaultTolerance = 10.0f;
-        private readonly ItemStorage _itemStorage = ModAccessStatic.Instance.ItemStorage;
+        private readonly ItemDefinitionStorage _itemDefinitionStorage;
+        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
+
+        public TrashSorterStorage(ItemDefinitionStorage itemDefinitionStorage)
+        {
+            _itemDefinitionStorage = itemDefinitionStorage;
+        }
+
 
         public bool Add(IMyCubeBlock block)
         {
@@ -26,7 +33,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             TrashSorters.Add(sorter);
             RegisterTerminal(block as IMyAssembler);
             block.OnClosing += Block_OnClosing;
-            MyAPIGateway.Utilities.ShowMessage(ClassName,"Trash sorter added");
+            _modLogger.Log(ClassName,"Trash sorter added");
             return true;
         }
         public bool Remove(IMyCubeBlock block)
@@ -35,7 +42,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             if (sorter == null) return false;
             if (!TrashSorters.Contains(sorter)) return false;
             TrashSorters.Remove(sorter);
-            MyAPIGateway.Utilities.ShowMessage(ClassName, "Trash sorter removed");
+            _modLogger.Log(ClassName, "Trash sorter removed");
             return true;
         }
 
@@ -43,7 +50,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
 
         public void ForceUpdateAllSorters()
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, $"Forcing all sorters to update {TrashSorters.Count}");
+            _modLogger.LogWarning(ClassName, $"Forcing all sorters to update {TrashSorters.Count}");
             foreach (var sorter in TrashSorters)
             {
                 Terminal_CustomDataChanged(sorter);
@@ -51,7 +58,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         }
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, "Terminal data Changed");
+            _modLogger.Log(ClassName, "Terminal data Changed");
             if (!TrashSorters.Contains(obj)) return;
 
             // Unsubscribe before making changes
@@ -60,7 +67,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             // Parse and update CustomData
             if (obj.CustomData.Contains("[FillMe]"))
             {
-                obj.CustomData = _itemStorage.GetDisplayNameListAsCustomData();
+                obj.CustomData = _itemDefinitionStorage.GetDisplayNameListAsCustomData();
             }
             var data = ParseAndFillCustomData(obj);
             var sorter = obj as IMyConveyorSorter;
@@ -76,7 +83,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         public void RawCustomDataTransformer(IMyConveyorSorter sorter, Dictionary<string, ModTuple> rawData)
         {
             var access = ModAccessStatic.Instance.ItemLimitsStorage;
-            MyAPIGateway.Utilities.ShowMessage(ClassName, "Transforming data into system");
+            _modLogger.Log(ClassName, "Transforming data into system");
             if (sorter == null) return;
 
             // Ensure the sorter has an entry in MyItemLimitsCounts
@@ -92,7 +99,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             {
                 // Check if I care to track this value.
                 MyDefinitionId myDefinitionId;
-                if (!_itemStorage.TryGetValue(dataRaw.Key, out myDefinitionId)) continue;
+                if (!_itemDefinitionStorage.TryGetValue(dataRaw.Key, out myDefinitionId)) continue;
 
 
                 // Check if the entry is already in convertedData, if it's not there add value counter and set the value.
@@ -123,7 +130,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         }
         private Dictionary<string, ModTuple> ParseAndFillCustomData(IMyTerminalBlock obj)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName, "Parsing text into RawData");
+            _modLogger.Log(ClassName, "Parsing text into RawData");
             // This function is absolute hell show of data parsing.
             var data = obj.CustomData;
             var parsedData = new Dictionary<string, ModTuple>();
@@ -140,12 +147,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
                 var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim())
                     .ToArray();
                 var itemDisplayName = parts[0];
-
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"Item name debug {itemDisplayName}");
-
+                
                 // If display name that player gave does not exist in my storage means or I don't care about it. Or its wrong.
                 MyDefinitionId definitionId;
-                if (!_itemStorage.ContainsKey(itemDisplayName, out definitionId)) continue;
+                if (!_itemDefinitionStorage.ContainsKey(itemDisplayName, out definitionId)) continue;
 
                 // If DisplayName is already in the dictionary, skip processing
                 if (parsedData.ContainsKey(itemDisplayName))
@@ -180,7 +185,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
 
             return parsedData;
         }
-        
         private static void TrackedValuesRemoveItems(IMyConveyorSorter sorter)
         {
             var access = ModAccessStatic.Instance.ItemLimitsStorage;
@@ -208,7 +212,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             }
             else
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, "No idea how this specific sorter has no terminal");
+                _modLogger.LogError(ClassName, "No idea how this specific sorter has no terminal");
+                return;
             }
 
             _subscribedTerminals.Add(terminal);
@@ -223,7 +228,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             }
             else
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, "No idea how this specific sorter has no terminal");
+                _modLogger.LogError(ClassName, "No idea how this specific sorter has no terminal");
+                return;
             }
 
             _subscribedTerminals.Add(terminal);
