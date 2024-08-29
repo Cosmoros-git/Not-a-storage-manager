@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Definitions;
 using VRage.Game.ModAPI;
@@ -22,8 +23,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
         public InventoryScanner InventoryScanner { get; private set; }
         public TrashSorterStorage TrashSorterStorage { get; private set; }
         public InventoryTerminalManager InventoryTerminalManager { get; private set; }
-
-        public ModLogger Logger { get; set; }
 
         public ModAccessStatic()
         {

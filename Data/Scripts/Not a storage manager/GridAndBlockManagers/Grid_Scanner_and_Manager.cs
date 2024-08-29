@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Policy;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game;
@@ -19,9 +20,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
     {
         public readonly HashSet<IMyCubeGrid> CubeGrids = new HashSet<IMyCubeGrid>();
         private readonly HashSet<IMyCubeGrid> _subscribedGrids = new HashSet<IMyCubeGrid>();
-        private readonly TrashSorterStorage _trashSorterStorage;
         private readonly InventoryTerminalManager _inventoryBlocksManager;
-        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
 
 
         private IMyCubeGrid _grid;
@@ -29,16 +28,15 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         private bool _isItNotAFirstScan;
         public bool HasGlobalScanFinished;
 
-        public GridScanner(IMyCubeBlock entity, TrashSorterStorage trashSorterStorage, InventoryTerminalManager inventoryTerminalManager)
+        public GridScanner(IMyCubeBlock entity, InventoryTerminalManager inventoryTerminalManager)
         {
             _grid = entity.CubeGrid;
-            _trashSorterStorage = trashSorterStorage;
             _inventoryBlocksManager = inventoryTerminalManager;
 
             _grid.OnGridMerge += Grid_OnGridMerge;
             _grid.OnGridSplit += Grid_OnGridSplit;
 
-            _modLogger.Log(ClassName, $"Scanning grid for inventories");
+            ModLogger.Instance.Log(ClassName, $"Scanning grid for inventories");
             Scan_Grids_For_Blocks_With_Inventories();
         }
 
@@ -58,7 +56,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 // Ensure _grid is not null before getting grid group
                 if (_grid == null)
                 {
-                    _modLogger.LogError(ClassName, "Grid is null.");
+                    ModLogger.Instance.LogError(ClassName, "Grid is null.");
                     return;
                 }
 
@@ -67,7 +65,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 // Ensure CubeGrids is initialized and has grids to process
                 if (CubeGrids == null || CubeGrids.Count == 0)
                 {
-                    _modLogger.LogError(ClassName, "No grids found in CubeGrids.");
+                    ModLogger.Instance.LogError(ClassName, "No grids found in CubeGrids.");
                     return;
                 }
 
@@ -77,7 +75,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     {
                         if (myGrid != null)
                         {
-                            _modLogger.Log(ClassName, $"Subbing to.{myGrid.CustomName}");
+                            ModLogger.Instance.Log(ClassName, $"Subbing to.{myGrid.CustomName}");
                             var grid = (MyCubeGrid)myGrid;
                             grid.OnFatBlockAdded += MyGrid_OnFatBlockAdded;
                             myGrid.OnClosing += MyGrid_OnClosing;
@@ -85,7 +83,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                         }
                         else
                         {
-                            _modLogger.LogError(ClassName, "Failed to cast grid to MyCubeGrid.");
+                            ModLogger.Instance.LogError(ClassName, "Failed to cast grid to MyCubeGrid.");
                             return;
                         }
                     }
@@ -95,7 +93,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                     // Ensure cubes is not null before processing
                     if (cubes == null)
                     {
-                        _modLogger.LogWarning(ClassName, "No fat blocks found in grid.");
+                        ModLogger.Instance.LogWarning(ClassName, "No fat blocks found in grid.");
                         continue;
                     }
 
@@ -107,7 +105,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                         }
                         else
                         {
-                            _modLogger.LogError(ClassName, "_inventoryBlocksManager is null.");
+                            ModLogger.Instance.LogError(ClassName, "_inventoryBlocksManager is null.");
                             return;
                         }
                     }
@@ -117,7 +115,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                _modLogger.LogError(ClassName, $"Congrats, all inventories scan messed up: {ex}");
+                ModLogger.Instance.LogError(ClassName, $"Congrats, all inventories scan messed up: {ex}");
             }
         }
 
@@ -128,7 +126,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             if (inventoryCount < 0) return;
 
             var terminalExists = fatBlock as IMyTerminalBlock;
-            if(terminalExists==null) return;
+            if (terminalExists == null) return;
 
             fatBlock.OnClosing += MyCubeBlock_OnClosing;
 
@@ -141,7 +139,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         // Todo optimize this
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
-            _modLogger.LogWarning(ClassName,
+            ModLogger.Instance.LogWarning(ClassName,
                 $"Grid_OnSplit happend");
             Scan_Grids_For_Blocks_With_Inventories();
         }
@@ -158,10 +156,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 return;
             }
 
-            _modLogger.LogWarning(ClassName,
+            ModLogger.Instance.LogWarning(ClassName,
                 $"Grid_OnMerge happend");
             Scan_Grids_For_Blocks_With_Inventories();
         }
+
         private void MyCubeBlock_OnClosing(IMyEntity cube)
         {
             try
@@ -170,7 +169,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                _modLogger.LogWarning(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
+                ModLogger.Instance.LogWarning(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
             }
 
             var inventoryCount = cube.InventoryCount;
@@ -186,14 +185,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void MyGrid_OnClosing(IMyEntity obj)
         {
-            
             obj.OnClosing -= MyGrid_OnClosing;
             var myCubeGrid = (IMyCubeGrid)obj;
             if (myCubeGrid == _grid)
             {
-                myCubeGrid.OnGridMerge-= Grid_OnGridMerge;
-                myCubeGrid.OnGridSplit-= Grid_OnGridSplit;
+                myCubeGrid.OnGridMerge -= Grid_OnGridMerge;
+                myCubeGrid.OnGridSplit -= Grid_OnGridSplit;
             }
+
             var grid = (MyCubeGrid)myCubeGrid;
             grid.OnFatBlockAdded -= MyGrid_OnFatBlockAdded;
             _subscribedGrids.Remove(myCubeGrid);
@@ -206,7 +205,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
                 catch (Exception ex)
                 {
-                    _modLogger.LogWarning(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
+                    ModLogger.Instance.LogWarning(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
                 }
 
                 var inventoryCount = cube.InventoryCount;

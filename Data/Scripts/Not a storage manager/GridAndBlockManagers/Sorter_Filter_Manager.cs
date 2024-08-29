@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using ParallelTasks;
@@ -32,7 +33,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private readonly HashSet<MyDefinitionId> _changedDefinitions = new HashSet<MyDefinitionId>();
         private readonly ItemDefinitionStorage _itemDefinitionStorage;
-        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
 
 
         public SorterFilterManager(TrashSorterStorage trashSorterStorage, ItemDefinitionStorage itemDefinitionStorage)
@@ -63,58 +63,50 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         {
             foreach (var definitionId in _changedDefinitions)
             {
-                // Iterate through each sorter in MyItemLimitsCounts
                 foreach (var sorterEntry in MyItemLimitsCounts)
                 {
                     var sorter = sorterEntry.Key;
                     var limitsDictionary = sorterEntry.Value;
 
-                    // Find the specific sorter filter that matches the definitionId
+                    // Check if the sorter contains the specific definitionId we're interested in
                     ModTuple modTuple;
-                    if (!limitsDictionary.TryGetValue(definitionId, out modTuple)) continue;
+                    if (!limitsDictionary.TryGetValue(definitionId, out modTuple))
+                        continue;
 
                     // Retrieve the current value for this definitionId
-                    MyFixedPoint value;
-                    if (!_itemDefinitionStorage.TryGetValue(definitionId, out value)) continue;
+                    MyFixedPoint currentValue;
+                    if (!_itemDefinitionStorage.TryGetValue(definitionId, out currentValue))
+                        continue;
 
-                    // Check whether the current value is above or below the limit
-                    var result = AboveLimitCheck(modTuple.Limit, modTuple.MaxValue, value);
+                    // Determine whether the value is above or below the limit
+                    var result = AboveLimitCheck(modTuple.Limit, modTuple.MaxValue, currentValue);
 
-                    // Handle the different cases based on the limit check
-                    switch (result)
+                    // Handle the result of the limit check
+                    lock (FilterSorters)
                     {
-                        case 1: // If the item is above the set limit
-                            lock (FilterSorters)
-                            {
-                                List<MyInventoryItemFilter> filterList;
-                                if (!FilterSorters.TryGetValue(sorter, out filterList))
-                                {
-                                    RemoveFromConveyorSorterFilter(sorter, definitionId);
-                                }
-                                else if (!filterList.Any(item => item.ItemId.Equals(definitionId)))
+                        List<MyInventoryItemFilter> filterList;
+                        FilterSorters.TryGetValue(sorter, out filterList);
+
+                        switch (result)
+                        {
+                            case 1: // Item is above the limit
+                                if (filterList == null || !filterList.Any(item => item.ItemId.Equals(definitionId)))
                                 {
                                     AddToConveyorSorterFilter(sorter, definitionId);
                                 }
-                            }
+                                break;
 
-                            break;
-
-                        case -1: // If the item is below the set limit
-                            lock (FilterSorters)
-                            {
-                                List<MyInventoryItemFilter> filterList;
-                                if (FilterSorters.TryGetValue(sorter, out filterList))
+                            case -1: // Item is below the limit
+                                if (filterList != null)
                                 {
                                     RemoveFromConveyorSorterFilter(sorter, definitionId);
                                 }
-                            }
+                                break;
 
-                            break;
-
-                        case 404:
-                            _modLogger.LogError(ClassName,
-                                $"Unexpected state for {definitionId} in ProcessChanges.");
-                            break;
+                            case 404:
+                                ModLogger.Instance.LogError(ClassName, $"Unexpected state for {definitionId} in ProcessChanges.");
+                                break;
+                        }
                     }
                 }
             }
@@ -122,6 +114,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             // Clear the set after processing
             _changedDefinitions.Clear();
         }
+
 
 
         // Function to add and remove items from filters.
@@ -155,7 +148,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                _modLogger.LogError(ClassName, $"Failed to add to filter: {ex.Message}");
+                ModLogger.Instance.LogError(ClassName, $"Failed to add to filter: {ex.Message}");
             }
         }
         private void RemoveFromConveyorSorterFilter(IMyConveyorSorter sorterIn, MyDefinitionId subtypeId)
@@ -188,7 +181,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                _modLogger.LogError(ClassName, $"Failed to remove a filter: {ex.Message}");
+                ModLogger.Instance.LogError(ClassName, $"Failed to remove a filter: {ex.Message}");
             }
         }
 
@@ -218,7 +211,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             catch (Exception ex)
             {
-                _modLogger.LogError(ClassName,
+                ModLogger.Instance.LogError(ClassName,
                     $"Error unsubscribing from ValueChanged event: {ex}");
             }
         }

@@ -1,19 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
-using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
-using Sandbox.Game.Screens.Helpers.RadialMenuActions;
-using Sandbox.ModAPI;
-using VRage;
 using VRage.Game;
-using VRage.ObjectBuilders;
-using VRage.Utils;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses
 {
     public class ReferenceDictionaryCreator : ModBase
     {
@@ -21,7 +13,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
         public ItemDefinitionStorage ItemDefinitionStorage;
 
-        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
         public List<string> Possible_Display_Name_Entries = new List<string>();
 
         public ReferenceDictionaryCreator()
@@ -30,11 +21,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             try
             {
                 InitializeStorages();
-                _modLogger.Log(ClassName, $"Creating all reference tables");
+                ModLogger.Instance.Log(ClassName, $"Creating all reference tables");
             }
             catch (Exception ex)
             {
-                _modLogger.LogError(ClassName,$"Congrats, this fucked up {ex}");
+                ModLogger.Instance.LogError(ClassName,$"Congrats, this fucked up {ex}");
             }
 
         }
@@ -43,7 +34,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             if (PreLoadGetDefinitions.Instance == null)
             {
-                _modLogger.LogError(ClassName, "GetDefinitions.Instance is null. Initialization aborted.");
+                ModLogger.Instance.LogError(ClassName, "GetDefinitions.Instance is null. Initialization aborted.");
                 return;
             }
             foreach (var definition in PreLoadGetDefinitions.Instance.AmmoDefinition)
@@ -88,13 +79,13 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                _modLogger.LogWarning(ClassName, "OnDispose was called");
+                ModLogger.Instance.LogWarning(ClassName, "OnDispose was called");
                 ItemDefinitionStorage = null;
                 Possible_Display_Name_Entries.Clear();
             }
             catch (Exception ex)
             {
-                _modLogger.LogError(ClassName, $"On dispose error {ex}");
+                ModLogger.Instance.LogError(ClassName, $"On dispose error {ex}");
             }
         }
     }

@@ -1,15 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using Sandbox.Common.ObjectBuilders;
 using Sandbox.Definitions;
-using Sandbox.ModAPI;
 using VRage.Collections;
 using VRage.Game;
 using VRage.Game.Components;
-using VRage.Utils;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses
 {
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class PreLoadGetDefinitions : MySessionComponentBase

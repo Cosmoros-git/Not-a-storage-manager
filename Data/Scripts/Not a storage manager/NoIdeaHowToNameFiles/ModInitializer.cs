@@ -1,20 +1,16 @@
-﻿using Sandbox.Game.Entities.Cube;
-using Sandbox.ModAPI;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockManagers;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
+using Sandbox.Game.EntityComponents;
+using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
-using Sandbox.Game.EntityComponents;
-using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
-using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles
 {
     public class ModInitializer : ModBase
     {
@@ -33,14 +29,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         private readonly ModLogger Logger;
 
 
-        public ModInitializer(IMyEntity entity, ModLogger logger)
+        public ModInitializer(IMyEntity entity)
         {
             _entity = entity;
-            Logger = logger;
-            var modAccessStatic = new ModAccessStatic
-            {
-                Logger = Logger
-            };
             _varImyCubeBlock = (IMyCubeBlock)entity;
             _varIMyCubeGrid = _varImyCubeBlock.CubeGrid;
         }
@@ -136,7 +127,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     var itemStorage = new ItemDefinitionStorage();
                     var itemLimitsStorage = new ItemLimitsStorage();
 
-                    var trashSorterStorage = new TrashSorterStorage(itemStorage);
+                    var trashSorterStorage = new TrashSorterStorage(itemStorage, itemLimitsStorage);
                     var inventoryScanner = new InventoryScanner(itemDefinitionStorage);
                     var inventoryTerminalManager = new InventoryTerminalManager(trashSorterStorage);
 
@@ -161,7 +152,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
                     else
                     {
                         VarGridScannerManager = new GridScanner(_entity as IMyCubeBlock,
-                            ModAccessStatic.Instance.TrashSorterStorage,
                             ModAccessStatic.Instance.InventoryTerminalManager);
                         Logger.Log(ClassName,
                             $"Loading sequence step 2");
@@ -216,6 +206,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public override void Dispose()
         {
             if (!IsGridManagedByThisBlock(_varIMyCubeGrid)) return;
+            if (Logger == null) return;
+            if(!Logger.IsSessionUnloading)return;
             if (_varIMyCubeGrid != null)
             {
                 if (_managedGrids != null && _managedGrids.Count > 0)

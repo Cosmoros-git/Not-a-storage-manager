@@ -2,13 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
-using Sandbox.Game.Entities.Cube;
-using Sandbox.ModAPI;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using VRage.Game;
 using VRage.Game.ModAPI;
+using IMyConveyorSorter = Sandbox.ModAPI.IMyConveyorSorter;
+using IMyTerminalBlock = Sandbox.ModAPI.IMyTerminalBlock;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 {
     public class TrashSorterStorage : ModBase
     {
@@ -17,14 +19,26 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         private const int DefaultAmount = 0;
         private const float DefaultTolerance = 10.0f;
         private readonly ItemDefinitionStorage _itemDefinitionStorage;
-        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
-        private readonly string _fillMeTag = "[fill me]";
+        private readonly Dictionary<IMyTerminalBlock, CustomData> _customDataStorage = new Dictionary<IMyTerminalBlock, CustomData>();
+        private readonly ItemLimitsStorage _itemLimitsStorage;
 
-        public TrashSorterStorage(ItemDefinitionStorage itemDefinitionStorage)
+
+
+        public TrashSorterStorage(ItemDefinitionStorage itemDefinitionStorage, ItemLimitsStorage itemLimitsStorage)
         {
             _itemDefinitionStorage = itemDefinitionStorage;
+            _itemLimitsStorage = itemLimitsStorage;
+            HeartBeat100 += TrashSorterStorage_HeartBeat100;
         }
-
+        private void TrashSorterStorage_HeartBeat100()
+        {
+            //ModLogger.Instance.Log(ClassName,$"OnHeartbeat 100 scan, amount of checked items {_customDataStorage.Count}");
+            foreach (var data in _customDataStorage)
+            {
+                var newData = data.Key.CustomData;
+                data.Value.CustomDataString = newData;
+            }
+        }
 
         public bool Add(IMyCubeBlock block)
         {
@@ -32,75 +46,70 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             if (sorter == null) return false;
             if (!TrashSubtype.Contains(sorter.BlockDefinition.SubtypeId)) return false;
             TrashSorters.Add(sorter);
-            _modLogger.Log(ClassName, "Trash sorter added");
+            ModLogger.Instance.Log(ClassName, "Trash sorter added");
             RegisterTerminal((IMyTerminalBlock)block);
             block.OnClosing += Block_OnClosing;
             return true;
         }
-
         public bool Remove(IMyCubeBlock block)
         {
             var sorter = block as IMyConveyorSorter;
             if (sorter == null) return false;
             if (!TrashSorters.Contains(sorter)) return false;
             TrashSorters.Remove(sorter);
-            _modLogger.Log(ClassName, "Trash sorter removed");
+            UnRegisterTerminal((IMyTerminalBlock)block);
+            ModLogger.Instance.Log(ClassName, "Trash sorter removed");
             return true;
         }
 
 
         public void ForceUpdateAllSorters()
         {
-            _modLogger.LogWarning(ClassName, $"Forcing all sorters to update {TrashSorters.Count}");
-            foreach (var sorter in TrashSorters)
+            ModLogger.Instance.LogWarning(ClassName, $"Forcing all sorters to update {TrashSorters.Count}");
+            foreach (var sorter in _customDataStorage)
             {
-                Terminal_CustomDataChanged(sorter);
+                Terminal_CustomDataChanged(sorter.Key,sorter.Value.CustomDataString);
             }
         }
-
-        private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
+        private void Terminal_CustomDataChanged(IMyTerminalBlock obj, string s)
         {
-            _modLogger.Log(ClassName, "Terminal data Changed");
+            ModLogger.Instance.Log(ClassName, "Terminal data Changed");
             if (!TrashSorters.Contains(obj)) return;
             if (string.IsNullOrEmpty(obj.CustomData))
             {
-                _modLogger.Log(ClassName, "Custom data is empty. Returning");
+                ModLogger.Instance.Log(ClassName, "Custom data is empty. Returning");
                 return;
             }
 
-            // Unsubscribe before making changes
-            UnRegisterTerminal(obj);
-
-
             // Parse and update CustomData
             var tempData = obj.CustomData.ToLowerInvariant();
-            if (tempData.Contains(_fillMeTag))
+            if (tempData.Contains(FillMeTag))
             {
-                _modLogger.Log(ClassName, "Fill Me tag detected");
+                ModLogger.Instance.Log(ClassName, "Fill Me tag detected");
                 obj.CustomData = _itemDefinitionStorage.GetDisplayNameListAsCustomData();
+                return;
             }
 
             var data = ParseAndFillCustomData(obj);
             var sorter = obj as IMyConveyorSorter;
             RawCustomDataTransformer(sorter, data);
-
-            // Resubscribe after changes are made
-            RegisterTerminal(obj);
         }
+
+
+
 
         public void RawCustomDataTransformer(IMyConveyorSorter sorter, Dictionary<string, ModTuple> rawData)
         {
-            var access = ModAccessStatic.Instance.ItemLimitsStorage;
-            _modLogger.Log(ClassName, "Transforming data into system");
+            ModLogger.Instance.Log(ClassName, "Transforming data into system");
             if (sorter == null) return;
 
             // Ensure the sorter has an entry in MyItemLimitsCounts
-            if (!access.MyItemLimitsCounts.ContainsKey(sorter))
+            if (!_itemLimitsStorage.MyItemLimitsCounts.ContainsKey(sorter))
             {
-                access.MyItemLimitsCounts[sorter] = new Dictionary<MyDefinitionId, ModTuple>();
+                _itemLimitsStorage.MyItemLimitsCounts[sorter] = new Dictionary<MyDefinitionId, ModTuple>();
             }
 
-            var convertedData = access.MyItemLimitsCounts[sorter];
+            var convertedData = _itemLimitsStorage.MyItemLimitsCounts[sorter];
 
             // Step 1: Process rawData and update or add to convertedData
             foreach (var dataRaw in rawData)
@@ -116,7 +125,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
                 if (!convertedData.ContainsKey(myDefinitionId))
                 {
                     convertedData[myDefinitionId] = dataRaw.Value;
-                    access.DictionaryTrackedValues[myDefinitionId] += 1;
+                    _itemLimitsStorage.DictionaryTrackedValues[myDefinitionId] += 1;
                 }
                 else
                 {
@@ -133,59 +142,73 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             {
                 convertedData.Remove(key);
                 //This updates the counter so I don't even know why it exists atm.
-                access.DictionaryTrackedValues[key] = -1;
+                _itemLimitsStorage.DictionaryTrackedValues[key] = -1;
             }
         }
-
         private Dictionary<string, ModTuple> ParseAndFillCustomData(IMyTerminalBlock obj)
         {
-            _modLogger.Log(ClassName, "Parsing text into RawData");
-            // This function is absolute hell show of data parsing.
-            var data = obj.CustomData;
+            ModLogger.Instance.Log(ClassName, "Parsing text into RawData");
+
+            // Initialize the parsed data dictionary and edited lines list
             var parsedData = new Dictionary<string, ModTuple>();
-            var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             var editedLines = new List<string>();
 
-            // This is for future me. First of all why these 4 variables? First one used to parse into data into folder and be edited back and spat out.
-            // Parsed data is the freaky class that I pass with display name keys values and limits at which to start cleanup.
-            // lines no one cares. Its the text in lines
-            // edited lines is the data that will populate the custom data of the block. It removes trash out of it and populates it for easier fill.
+            // Split the custom data into lines
+            var lines = obj.CustomData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var line in lines)
             {
-                var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim())
-                    .ToArray();
+                var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
+
+                if (parts.Length < 1)
+                {
+                    // Log error and skip if the line doesn't contain enough parts
+                    ModLogger.Instance.LogError(ClassName, $"Skipping invalid line: {line}");
+                    continue;
+                }
+
                 var itemDisplayName = parts[0];
 
-                // If display name that player gave does not exist in my storage means or I don't care about it. Or its wrong.
+                // Validate that the item display name exists in the storage
                 MyDefinitionId definitionId;
-                if (!_itemDefinitionStorage.ContainsKey(itemDisplayName, out definitionId)) continue;
-
-                // If DisplayName is already in the dictionary, skip processing
-                if (parsedData.ContainsKey(itemDisplayName))
+                if (!_itemDefinitionStorage.ContainsKey(itemDisplayName, out definitionId))
+                {
+                    ModLogger.Instance.LogError(ClassName, $"Item display name '{itemDisplayName}' not found in storage.");
                     continue;
+                }
 
-                // Defaults if anything messes up
+                // If the item is already processed, skip to avoid duplicates
+                if (parsedData.ContainsKey(itemDisplayName))
+                {
+                    ModLogger.Instance.LogWarning(ClassName, $"Duplicate entry for '{itemDisplayName}' found. Skipping.");
+                    continue;
+                }
+
+                // Initialize default values
                 var maxAmount = DefaultAmount;
                 var percentageAboveToStartCleanup = DefaultTolerance;
 
                 if (parts.Length == 3)
                 {
-                    // Try to parse the amount
+                    // Try to parse the max amount, log and skip if failed
                     if (!int.TryParse(parts[1], out maxAmount))
                     {
+                        ModLogger.Instance.LogError(ClassName, $"Failed to parse max amount for '{itemDisplayName}' in line: {line}");
                         maxAmount = DefaultAmount;
                     }
 
-                    // Try to parse the percentage
+                    // Try to parse the percentage, log and skip if failed
                     if (!float.TryParse(parts[2].TrimEnd('%'), out percentageAboveToStartCleanup))
                     {
+                        ModLogger.Instance.LogError(ClassName, $"Failed to parse percentage for '{itemDisplayName}' in line: {line}");
                         percentageAboveToStartCleanup = DefaultTolerance;
                     }
                 }
 
-                // Add to dictionary and format the line for CustomData
+                // Add the parsed data to the dictionary
                 parsedData[itemDisplayName] = new ModTuple(maxAmount, percentageAboveToStartCleanup);
+
+                // Format the line for CustomData
                 editedLines.Add($"{itemDisplayName} | {maxAmount} | {percentageAboveToStartCleanup}%");
             }
 
@@ -201,7 +224,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             var access = ModAccessStatic.Instance;
             if (access == null)
             {
-                _modLogger.LogError("TrackedValuesRemoveItems", "ModAccessStatic.Instance is null.");
+                ModLogger.Instance.LogError("TrackedValuesRemoveItems", "ModAccessStatic.Instance is null.");
                 return;
             }
 
@@ -209,7 +232,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             var itemLimitsStorage = access.ItemLimitsStorage;
             if (itemLimitsStorage == null)
             {
-                _modLogger.LogError("ClassName", "ItemLimitsStorage is null.");
+                ModLogger.Instance.LogError("ClassName", "ItemLimitsStorage is null.");
             }
 
             // Check if MyItemLimitsCounts is initialized and contains the sorter
@@ -231,39 +254,60 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
 
         private void RegisterTerminal(IMyTerminalBlock terminal)
         {
-            if (terminal != null)
+            if (terminal == null)
             {
-                if (_subscribedTerminals.Contains(terminal)) return;
-                terminal.CustomName = "Trash Collector";
-                terminal.CustomDataChanged += Terminal_CustomDataChanged;
-                _modLogger.Log(ClassName, "Trash Sorter Terminal Registered");
-                if (!string.IsNullOrEmpty(terminal.CustomData))
-                {
-                    Terminal_CustomDataChanged(terminal);
-                }
+                ModLogger.Instance.LogError(ClassName, "No idea how this specific sorter has no terminal");
+                return;
+            }
 
+            if (_subscribedTerminals.Contains(terminal)) return;
+
+            CustomData accessData;
+            if (!_customDataStorage.TryGetValue(terminal, out accessData))
+            {
+                // Create a new CustomData instance and add it to the dictionary
+                accessData = new CustomData(terminal.CustomData, terminal);
+                _customDataStorage[terminal] = accessData;
+
+                // Subscribe to the CustomDataChanged event and mark terminal as subscribed
+                accessData.CustomDataChanged += Terminal_CustomDataChanged;
                 _subscribedTerminals.Add(terminal);
             }
             else
             {
-                _modLogger.LogError(ClassName, "No idea how this specific sorter has no terminal");
-            }
-        }
+                // Update the existing CustomData with the new string
+                accessData.CustomDataString = terminal.CustomData;
 
+                // Even though the terminal wasn't in _subscribedTerminals, it was in _customDataStorage, so we should add it to _subscribedTerminals
+                _subscribedTerminals.Add(terminal);
+            }
+
+            ModLogger.Instance.Log(ClassName, "Trash Sorter Terminal Registered");
+        }
         private void UnRegisterTerminal(IMyTerminalBlock terminal)
         {
-            if (terminal != null)
+            if (terminal == null)
             {
-                if (!_subscribedTerminals.Contains(terminal)) return;
-                _modLogger.Log(ClassName, "Trash Sorter Terminal Unregistered");
-                terminal.CustomDataChanged -= Terminal_CustomDataChanged;
-                _subscribedTerminals.Remove(terminal);
+                ModLogger.Instance.LogError(ClassName, "No idea how this specific sorter has no terminal");
+                return;
             }
-            else
+
+            if (!_subscribedTerminals.Contains(terminal)) return;
+
+            // Log the unregistration
+            ModLogger.Instance.Log(ClassName, "Trash Sorter Terminal Unregistered");
+
+            // Unsubscribe from the CustomDataChanged event if it was subscribed
+            CustomData accessData;
+            if (_customDataStorage.TryGetValue(terminal, out accessData))
             {
-                _modLogger.LogError(ClassName, "No idea how this specific sorter has no terminal");
+                accessData.CustomDataChanged -= Terminal_CustomDataChanged;
             }
+
+            // Remove the terminal from the subscribed terminals set
+            _subscribedTerminals.Remove(terminal);
         }
+
 
 
         private void Block_OnClosing(VRage.ModAPI.IMyEntity obj)
@@ -281,6 +325,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
 
             }
             TrashSorters.Clear();
+            HeartBeat100 -= TrashSorterStorage_HeartBeat100;
         }
     }
 }

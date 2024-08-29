@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game;
@@ -22,7 +23,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         public Dictionary<MyInventory, List<MyPhysicalInventoryItem>> Snapshot =
             new Dictionary<MyInventory, List<MyPhysicalInventoryItem>>();
 
-        private readonly ModLogger _logger = ModAccessStatic.Instance.Logger;
         private readonly ItemDefinitionStorage _itemDefinitionStorage;
 
         public InventoryScanner(ItemDefinitionStorage itemDefinitionStorage)
@@ -36,12 +36,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             {
                 if (AllInventories == null)
                 {
-                    _logger.LogWarning(ClassName, $"All inventories is somehow null");
+                    ModLogger.Instance.LogWarning(ClassName, $"All inventories is somehow null");
                     return;
                 }
 
 
-                _logger.Log(ClassName, $"Inventories count {AllInventories.Count}");
+                ModLogger.Instance.Log(ClassName, $"Inventories count {AllInventories.Count}");
                 foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
                 {
                     if (items == null)return;
@@ -58,7 +58,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                _logger.LogError(ClassName,$"Congrats, all inventories scan fucked up {ex}");
+                ModLogger.Instance.LogError(ClassName,$"Congrats, all inventories scan fucked up {ex}");
             }
         }
 
@@ -87,7 +87,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                _logger.LogError(ClassName, $"On add inventory error {ex}");
+                ModLogger.Instance.LogError(ClassName, $"On add inventory error {ex}");
             }
         }
         public void RemoveInventory(MyInventory inventory)
@@ -100,7 +100,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                _logger.LogError(ClassName, $"On remove inventory error {ex}");
+                ModLogger.Instance.LogError(ClassName, $"On remove inventory error {ex}");
             }
         }
 
@@ -163,7 +163,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         {
             try
             {
-                _logger.LogWarning(ClassName, "OnDispose was called");
+                ModLogger.Instance.LogWarning(ClassName, "OnDispose was called");
                 foreach (var inventory in AllInventories)
                 {
                     inventory.OnVolumeChanged -= Inventory_OnVolumeChanged;
@@ -174,7 +174,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             }
             catch (Exception ex)
             {
-                _logger.LogError(ClassName, $"On dispose error {ex}");
+                ModLogger.Instance.LogError(ClassName, $"On dispose error {ex}");
             }
         }
     }

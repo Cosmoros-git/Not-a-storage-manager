@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasses;
 using Sandbox.Game;
@@ -18,7 +19,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
     {
         private readonly HashSet<IMyTerminalBlock> _subscribedTerminals = new HashSet<IMyTerminalBlock>();
         private readonly HashSet<IMyCubeBlock> _trashBlocks = new HashSet<IMyCubeBlock>();
-        private readonly ModLogger _modLogger = ModAccessStatic.Instance.Logger;
         private readonly TrashSorterStorage _trashConveyorSorterStorage;
 
         public InventoryTerminalManager(TrashSorterStorage trashSorterStorage)
@@ -129,7 +129,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
 
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
-            _modLogger.Log(ClassName, "Normal inventory block custom data change.");
+            ModLogger.Instance.Log(ClassName, "Normal inventory block custom data change.");
             var block = (IMyCubeBlock)obj;
 
             // Check if the block is not designated as trash

@@ -1,14 +1,11 @@
 ﻿using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
-using NotAStorageManager.Data.Scripts.Not_a_storage_manager.StaticClasses;
 using Sandbox.Common.ObjectBuilders;
-using Sandbox.ModAPI;
-using VRage.Game;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
-namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
+namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles
 {
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_MyProgrammableBlock), false, "LargeTrashController",
         "SmallTrashController")]
@@ -29,10 +26,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         {
             base.Init(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-           var id = Entity.EntityId.ToString();
-            Logger = new ModLogger("TrashManager.txt",id);
+            var id = Entity.EntityId.ToString();
             Logger.Log("Heartbeat core", "Block loaded");
-            _iModInitializer = new ModInitializer(Entity,Logger);
+            _iModInitializer = new ModInitializer(Entity);
         }
 
 
@@ -61,11 +57,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 
                 return;
             }
-            else
-            {
-                var grid = (IMyCubeBlock)Entity;
-                Logger.GridId = grid.CubeGrid.CustomName;
-            }
+
+            Logger.LogFileName = Entity.EntityId.ToString();
 
             // Initialization successful
             _initialized = true;
@@ -105,7 +98,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             // Trigger another update attempt in the next frame
             NeedsUpdate = MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
         }
-
 
         public override void Close()
         {
