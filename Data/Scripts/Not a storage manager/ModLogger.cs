@@ -12,15 +12,16 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
     {
         private readonly bool _isEnabled;
         public string GridId;
-        private readonly string logFileName;
+        private readonly string _logFileName;
 
-        public ModLogger(string logFileName, bool enableLogging = true)
+        public ModLogger(string logFileName, string gridId, bool enableLogging = true)
         {
             _isEnabled = enableLogging;
-            this.logFileName = logFileName;
+            _logFileName = gridId+"_"+logFileName;
+            GridId = gridId;
             // Initialize the log file
             if (!_isEnabled) return;
-            using (var writer = MyAPIGateway.Utilities.WriteFileInLocalStorage(logFileName, typeof(ModLogger)))
+            using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(_logFileName, typeof(ModLogger)))
             {
                 writer.WriteLine("----- Log Started: " + DateTime.Now + " -----");
             }
@@ -34,14 +35,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
             try
             {
                 string existingContent;
-                using (var stream = MyAPIGateway.Utilities.ReadFileInWorldStorage(logFileName, typeof(ModLogger)))
+                using (var stream = MyAPIGateway.Utilities.ReadFileInWorldStorage(_logFileName, typeof(ModLogger)))
                 {
                     existingContent = stream.ReadToEnd(); // Read the existing content
                     existingContent += $"{message}\n"; // Add new message with a newline
                     stream.Dispose(); // Dispose the read stream before writing
                 }
 
-                using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(logFileName, typeof(ModLogger)))
+                using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(_logFileName, typeof(ModLogger)))
                 {
                     writer.Write(existingContent); // Write back all the content including the new message
                 }

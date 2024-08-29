@@ -114,7 +114,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
 
                 HasGlobalScanFinished = true;
-                _trashSorterStorage.ForceUpdateAllSorters();
             }
             catch (Exception ex)
             {
@@ -142,7 +141,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
         // Todo optimize this
         private void Grid_OnGridSplit(IMyCubeGrid arg1, IMyCubeGrid arg2)
         {
-            MyAPIGateway.Utilities.ShowMessage(ClassName,
+            _modLogger.LogWarning(ClassName,
                 $"Grid_OnSplit happend");
             Scan_Grids_For_Blocks_With_Inventories();
         }
@@ -159,29 +158,19 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 return;
             }
 
-            MyAPIGateway.Utilities.ShowMessage(ClassName,
+            _modLogger.LogWarning(ClassName,
                 $"Grid_OnMerge happend");
             Scan_Grids_For_Blocks_With_Inventories();
         }
-
-
-        private void Grid_OnClosing(IMyEntity obj)
-        {
-            _grid.OnGridMerge -= Grid_OnGridMerge;
-            _grid.OnGridSplit -= Grid_OnGridSplit;
-            _grid.OnClosing -= Grid_OnClosing;
-        }
-
         private void MyCubeBlock_OnClosing(IMyEntity cube)
         {
             try
             {
                 cube.OnClosing -= MyCubeBlock_OnClosing;
-                var cubeBlock = (MyCubeBlock)cube;
             }
             catch (Exception ex)
             {
-                MyAPIGateway.Utilities.ShowMessage(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
+                _modLogger.LogWarning(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
             }
 
             var inventoryCount = cube.InventoryCount;
@@ -217,7 +206,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
                 catch (Exception ex)
                 {
-                    MyAPIGateway.Utilities.ShowMessage(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
+                    _modLogger.LogWarning(ClassName, $"MyCubeBlock_OnClosing, on error on un-sub {ex}");
                 }
 
                 var inventoryCount = cube.InventoryCount;

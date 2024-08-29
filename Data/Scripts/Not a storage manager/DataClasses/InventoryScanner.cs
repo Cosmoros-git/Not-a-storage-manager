@@ -41,7 +41,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 }
 
 
-                _logger.Log(ClassName, $"Inventories count{AllInventories.Count}");
+                _logger.Log(ClassName, $"Inventories count {AllInventories.Count}");
                 foreach (var items in AllInventories.Select(inventory => inventory.GetItems()))
                 {
                     if (items == null)return;
