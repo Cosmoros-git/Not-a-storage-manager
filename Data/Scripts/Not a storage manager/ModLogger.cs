@@ -10,18 +10,17 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
 {
     public class ModLogger
     {
-        private readonly string _logFilePath;
         private readonly bool _isEnabled;
         public string GridId;
+        private readonly string logFileName;
 
         public ModLogger(string logFileName, bool enableLogging = true)
         {
             _isEnabled = enableLogging;
-            _logFilePath = Path.Combine(MyAPIGateway.Utilities.GamePaths.ModScopeName, logFileName);
-
+            this.logFileName = logFileName;
             // Initialize the log file
             if (!_isEnabled) return;
-            using (var writer = MyAPIGateway.Utilities.WriteFileInLocalStorage(_logFilePath, typeof(ModLogger)))
+            using (var writer = MyAPIGateway.Utilities.WriteFileInLocalStorage(logFileName, typeof(ModLogger)))
             {
                 writer.WriteLine("----- Log Started: " + DateTime.Now + " -----");
             }
@@ -30,19 +29,21 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         public void Log(string originClass, string message)
         {
             if (!_isEnabled) return;
-            var sb = new StringBuilder();
-            sb.Append(GridId);
-            sb.Append(": ");
-            sb.Append(originClass);
-            sb.Append(": ");
-            sb.Append(message);
-            message = sb.ToString();
+            message = $"{GridId}::{originClass}: {message}";
 
             try
             {
-                using (var writer = MyAPIGateway.Utilities.WriteFileInLocalStorage(_logFilePath, typeof(ModLogger)))
+                string existingContent;
+                using (var stream = MyAPIGateway.Utilities.ReadFileInWorldStorage(logFileName, typeof(ModLogger)))
                 {
-                    writer.WriteLine($"{DateTime.Now}: {message}");
+                    existingContent = stream.ReadToEnd(); // Read the existing content
+                    existingContent += $"{message}\n"; // Add new message with a newline
+                    stream.Dispose(); // Dispose the read stream before writing
+                }
+
+                using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(logFileName, typeof(ModLogger)))
+                {
+                    writer.Write(existingContent); // Write back all the content including the new message
                 }
             }
             catch (Exception ex)

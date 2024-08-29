@@ -31,6 +31,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             // If no inventories return
             var inventoryCount = myCubeBlock.InventoryCount;
             if (inventoryCount <= 0) return;
+            var terminalExists = myCubeBlock as IMyTerminalBlock;
+            if (terminalExists == null) return;
+
 
             myCubeBlock.OnClosing += MyCubeBlock_OnClosing;
 
@@ -41,19 +44,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 if (_trashConveyorSorterStorage.Add(iMyConveyorSorter))
                     return;
             }
-
-            // If block is not a terminal block, we may want to handle it differently or skip
-            if (myCubeBlock is IMyTerminalBlock)
-            {
-                SubscribeBlock(myCubeBlock);
-                return;
-            }
-
+            SubscribeBlock(myCubeBlock);
             // If block is named trash don't add it to the inventories
             if (Is_This_Trash_Block(myCubeBlock)) return;
             Add_Inventories_To_Storage(inventoryCount, myCubeBlock);
         }
-
 
 
         public void Add_Inventories_To_Storage(int inventoryCount, IMyCubeBlock block)
@@ -67,6 +62,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 }
             }
         }
+
         private static void Remove_Inventories_From_Storage(int inventoryCount, IMyCubeBlock block)
         {
             for (var i = 0; i < inventoryCount; i++)
@@ -86,6 +82,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             var terminal = block as IMyTerminalBlock;
             return terminal != null && Is_This_Trash_Block(terminal);
         }
+
         public bool Is_This_Trash_Block(IMyTerminalBlock terminal)
         {
             var block = (IMyCubeBlock)terminal;
@@ -101,8 +98,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 return false;
             _trashBlocks.Add(block);
             return true;
-
-
         }
 
 
@@ -114,6 +109,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             terminal.CustomDataChanged += Terminal_CustomDataChanged;
             _subscribedTerminals.Add(terminal);
         }
+
         public void UnsubscribeBlock(IMyCubeBlock block)
         {
             var terminal = block as IMyTerminalBlock;
@@ -125,16 +121,15 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             }
             else
             {
-                MyAPIGateway.Utilities.ShowMessage("UnsubscribeBlock", "Block is not an IMyTerminalBlock: " + block.DisplayNameText);
+                MyAPIGateway.Utilities.ShowMessage("UnsubscribeBlock",
+                    "Block is not an IMyTerminalBlock: " + block.DisplayNameText);
             }
         }
 
 
-
-
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj)
         {
-            _modLogger.Log(ClassName,"Normal inventory block custom data change.");
+            _modLogger.Log(ClassName, "Normal inventory block custom data change.");
             var block = (IMyCubeBlock)obj;
 
             // Check if the block is not designated as trash
@@ -161,11 +156,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
                 _trashBlocks.Add(block);
             }
         }
+
         private void MyCubeBlock_OnClosing(VRage.ModAPI.IMyEntity obj)
         {
             UnsubscribeBlock((IMyCubeBlock)obj);
             obj.OnClosing -= MyCubeBlock_OnClosing;
         }
-
     }
 }

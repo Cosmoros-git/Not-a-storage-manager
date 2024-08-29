@@ -31,7 +31,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             if (sorter == null) return false;
             if (!TrashSubtype.Contains(sorter.BlockDefinition.SubtypeId)) return false;
             TrashSorters.Add(sorter);
-            RegisterTerminal(block as IMyAssembler);
+            RegisterTerminal((IMyConveyorSorter)block);
             block.OnClosing += Block_OnClosing;
             _modLogger.Log(ClassName,"Trash sorter added");
             return true;
@@ -71,10 +71,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             }
             var data = ParseAndFillCustomData(obj);
             var sorter = obj as IMyConveyorSorter;
-            if (sorter != null)
-            {
-                RawCustomDataTransformer(sorter, data);
-            }
+            RawCustomDataTransformer(sorter, data);
 
             // Resubscribe after changes are made
             RegisterTerminal(obj);
@@ -198,9 +195,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             }
         }
 
-        private void RegisterTerminal(IMyCubeBlock block)
+        private void RegisterTerminal(IMyTerminalBlock block)
         {
-            var terminal = block as IMyTerminalBlock;
+            var terminal = (IMyTerminalBlock)block;
             if (terminal != null)
             {
                 if (_subscribedTerminals.Contains(terminal)) return;

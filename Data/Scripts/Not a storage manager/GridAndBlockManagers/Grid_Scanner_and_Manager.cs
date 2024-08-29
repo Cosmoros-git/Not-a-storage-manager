@@ -128,6 +128,9 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.GridAndBlockMana
             var inventoryCount = fatBlock.InventoryCount;
             if (inventoryCount < 0) return;
 
+            var terminalExists = fatBlock as IMyTerminalBlock;
+            if(terminalExists==null) return;
+
             fatBlock.OnClosing += MyCubeBlock_OnClosing;
 
 

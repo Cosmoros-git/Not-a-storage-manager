@@ -29,7 +29,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager
         {
             base.Init(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            Logger = new ModLogger("TrashManager");
+            Logger = new ModLogger("TrashManager.txt");
             Logger.Log("Heartbeat core", "Block loaded");
             _iModInitializer = new ModInitializer(Entity,Logger);
         }
