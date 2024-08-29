@@ -1,41 +1,60 @@
 ﻿using System;
 using Sandbox.ModAPI;
+using VRage.Game;
 using VRage.Game.Components;
 using VRage.Scripting;
+using VRage.Utils;
 
 namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles
 {
+    [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class ModLogger : MySessionComponentBase
     {
-        public bool IsEnabled;
+        public bool IsEnabled = true;
         public bool IsSessionUnloading;
 
 
-        public string ManagingBlockId = "No manager";
-        private string _realLogName;
-        public static ModLogger Instance { get; private set; }
+        public string ManagingBlockId = "";
+        public static ModLogger Instance;
+        private const string Ending = "_Logs.txt";
 
+        public string LogFileName => ManagingBlockId + Ending;
 
-        public string LogFileName
+        public override void LoadData()
         {
-            get { return _realLogName; }
-            set { _realLogName = ManagingBlockId + value; }
+            base.LoadData();
+            Instance = this;
+            FirstMessage();
         }
 
-        public ModLogger()
+        protected override void UnloadData()
         {
+            base.UnloadData();
+            Log("Not a storage manager", "Session unloading");
+            // Perform cleanup tasks here
+        }
+        private void ClearLog()
+        {
+            // This clears the log file by overwriting it with an empty string or an initial message
             using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(LogFileName, typeof(ModLogger)))
             {
-                writer.WriteLine("----- Log Started: " + DateTime.Now + " -----");
+                writer.Write(""); // Write an empty string to clear the log file
             }
-
-            Instance = this;
         }
-
+        private void FirstMessage()
+        {
+            ClearLog();
+            var existingContent = "--------------Start of the logs-------------\n"; // Add a newline to the end of each message
+            using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(LogFileName, typeof(ModLogger)))
+            {
+                writer.Write(existingContent); // Write back all the content including the new message
+            }
+        }
         public void Log(string originClass, string message)
         {
             if (!IsEnabled) return;
-            message = $"{ManagingBlockId}::{originClass}: {message}";
+
+            message = $"{DateTime.Now}::{originClass}: {message}"; // Add a newline to the end of each message
 
             try
             {
@@ -44,7 +63,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameF
                 {
                     existingContent = stream.ReadToEnd(); // Read the existing content
                     existingContent += $"{message}\n"; // Add new message with a newline
-                    stream.Dispose(); // Dispose the read stream before writing
                 }
 
                 using (var writer = MyAPIGateway.Utilities.WriteFileInWorldStorage(LogFileName, typeof(ModLogger)))
@@ -52,10 +70,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameF
                     writer.Write(existingContent); // Write back all the content including the new message
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Handle any errors that occur when writing to the log file
-                MyAPIGateway.Utilities.ShowMessage("Logger Error", ex.ToString());
+                FirstMessage(); // Call FirstMessage to write the initial content if reading fails
+                Log(originClass, message);
             }
         }
 
@@ -67,20 +85,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameF
         public void LogError(string originClass, string message)
         {
             Log(originClass, "[ERROR]: " + message);
-        }
-
-        public override void LoadData()
-        {
-            base.LoadData();
-            Log("Not a storage manager", "Session loading");
-            // Perform setup tasks
-        }
-
-        protected override void UnloadData()
-        {
-            base.UnloadData();
-            Log("Not a storage manager", "Session unloading");
-            // Perform cleanup tasks here
         }
     }
 }

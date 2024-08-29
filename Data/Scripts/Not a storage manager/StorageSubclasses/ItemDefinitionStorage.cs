@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
+using NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameFiles;
 using VRage.Game;
 using VRage;
 
@@ -20,7 +21,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         private readonly Dictionary<MyDefinitionId, MyFixedPoint> _definitionIdToFixedPoint =
             new Dictionary<MyDefinitionId, MyFixedPoint>();
 
-        private readonly List<string> _entryNames = new List<string>();
+        public List<string> PossibleNames = new List<string>();
 
         public event Action<MyDefinitionId> ValueChanged;
         // Add methods to interact with both dictionaries
@@ -30,7 +31,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             _nameToDefinitionId[displayName] = definitionId;
             _definitionIdToName[definitionId] = displayName;
             _definitionIdToFixedPoint[definitionId] = fixedPoint;
-            _entryNames.Add(displayName);
         }
 
 
@@ -110,7 +110,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
         }
         public string GetDisplayNameListAsCustomData()
         {
-            return string.Join("\n", _entryNames);
+            ModLogger.Instance.Log(ClassName,PossibleNames.Count.ToString());
+            return string.Join("\n", PossibleNames);
         }
 
 

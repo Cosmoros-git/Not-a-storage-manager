@@ -9,15 +9,14 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
 {
     public class ReferenceDictionaryCreator : ModBase
     {
-        // ReSharper disable InconsistentNaming
+        
+        private readonly ItemDefinitionStorage _itemDefinitionStorage;
 
-        public ItemDefinitionStorage ItemDefinitionStorage;
+        public List<string> PossibleDisplayNameEntries = new List<string>();
 
-        public List<string> Possible_Display_Name_Entries = new List<string>();
-
-        public ReferenceDictionaryCreator()
+        public ReferenceDictionaryCreator(ItemDefinitionStorage itemDefinitionStorage)
         {
-            ItemDefinitionStorage = new ItemDefinitionStorage();
+            _itemDefinitionStorage = itemDefinitionStorage;
             try
             {
                 InitializeStorages();
@@ -25,68 +24,67 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.StorageSubclasse
             }
             catch (Exception ex)
             {
-                ModLogger.Instance.LogError(ClassName,$"Congrats, this fucked up {ex}");
+                ModLogger.Instance.LogError(ClassName, $"Congrats, this fucked up {ex}");
             }
-
         }
 
         private void InitializeStorages()
         {
+            ModLogger.Instance.Log(ClassName, "Storage is being filled by data");
             if (PreLoadGetDefinitions.Instance == null)
             {
                 ModLogger.Instance.LogError(ClassName, "GetDefinitions.Instance is null. Initialization aborted.");
                 return;
             }
-            foreach (var definition in PreLoadGetDefinitions.Instance.AmmoDefinition)
+
+            var ammoDef = PreLoadGetDefinitions.Instance.AmmoDefinition;
+            // ModLogger.Instance.Log(ClassName, ammoDeff.Count.ToString());
+            foreach (var definition in ammoDef)
             {
                 var name = definition.DisplayNameText;
                 FillDictionary(definition, name);
             }
 
-            foreach (var definition in PreLoadGetDefinitions.Instance.ComponentsDefinitions)
+            var compDef = PreLoadGetDefinitions.Instance.ComponentsDefinitions;
+            // ModLogger.Instance.Log(ClassName, compDeff.Count.ToString());
+            foreach (var definition in compDef)
             {
                 var name = definition.DisplayNameText;
                 FillDictionary(definition, name);
             }
 
             // Ore Definitions - Prefixed with "ore_"
-            foreach (var definition in PreLoadGetDefinitions.Instance.OresDefinitions)
+            var oreDef = PreLoadGetDefinitions.Instance.OresDefinitions;
+            //  ModLogger.Instance.Log(ClassName, oreDeff.Count.ToString());
+            foreach (var definition in oreDef)
             {
                 var name = definition.DisplayNameText;
-                if(UniqueModExceptions.Contains(name)) continue;
+                if (UniqueModExceptions.Contains(name)) continue;
                 if (!NamingExceptions.Contains(name))
                 {
                     if (!name.Contains("Ore")) name += " Ore";
                 }
+
                 FillDictionary(definition, name);
             }
 
             // Ingot Definitions - Prefixed with "ingot_"
-            foreach (var definition in PreLoadGetDefinitions.Instance.IngotDefinitions)
+            var ingotDef = PreLoadGetDefinitions.Instance.OresDefinitions;
+            // ModLogger.Instance.Log(ClassName,ingotDeff.Count.ToString());
+            foreach (var definition in ingotDef)
             {
                 var name = definition.DisplayNameText;
                 FillDictionary(definition, name);
             }
+
+            ModLogger.Instance.Log(ClassName, "Possible name entries: "+PossibleDisplayNameEntries.Count);
         }
 
         private void FillDictionary(MyDefinitionBase definition, string name)
         {
-            ItemDefinitionStorage.Add(name, definition.Id, 0);
-            Possible_Display_Name_Entries.Add(name);
-        }
-
-        public override void Dispose()
-        {
-            try
-            {
-                ModLogger.Instance.LogWarning(ClassName, "OnDispose was called");
-                ItemDefinitionStorage = null;
-                Possible_Display_Name_Entries.Clear();
-            }
-            catch (Exception ex)
-            {
-                ModLogger.Instance.LogError(ClassName, $"On dispose error {ex}");
-            }
+            _itemDefinitionStorage.Add(name, definition.Id, 0);
+            PossibleDisplayNameEntries.Add(name);
+            ModLogger.Instance.Log(ClassName, $"Possible name added: {name}");
         }
     }
 }

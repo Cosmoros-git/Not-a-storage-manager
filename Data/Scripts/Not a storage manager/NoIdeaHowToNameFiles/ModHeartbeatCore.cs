@@ -1,5 +1,7 @@
 ﻿using NotAStorageManager.Data.Scripts.Not_a_storage_manager.AbstractClass;
 using Sandbox.Common.ObjectBuilders;
+using Sandbox.ModAPI;
+using System;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -19,15 +21,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameF
 
         private bool _isItOnStandBy;
         private ModInitializer _iModInitializer;
-        public static ModLogger Logger;
 
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
         {
             base.Init(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-            var id = Entity.EntityId.ToString();
-            Logger.Log("Heartbeat core", "Block loaded");
             _iModInitializer = new ModInitializer(Entity);
         }
 
@@ -36,36 +35,42 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameF
         {
             base.UpdateOnceBeforeFrame();
             if (_initialized) return;
-            if (!_iModInitializer.VerifyLaunch())
+            try
             {
-                if (_amountOfLaunchTries == 0)
-                    Logger.LogError("Heartbeat core", "Verify launch failed. Trying again.");
-                if (_isItOnStandBy) return;
-                _amountOfLaunchTries++;
-
-                if (_amountOfLaunchTries <= 10)
+                ModLogger.Instance.ManagingBlockId = Entity.EntityId.ToString();
+                if (!_iModInitializer.VerifyLaunch())
                 {
-                    // Try again on the next frame
-                    NeedsUpdate = MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
-                }
-                else
-                {
-                    // Switch to checking every 100th frame after 20 failed attempts
-                    NeedsUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
-                    _isItOnStandBy = true;
-                }
+                    if (_amountOfLaunchTries == 0)
+                        ModLogger.Instance.LogError("Heartbeat core", "Verify launch failed. Trying again.");
+                    if (_isItOnStandBy) return;
+                    _amountOfLaunchTries++;
 
+                    if (_amountOfLaunchTries <= 10)
+                    {
+                        // Try again on the next frame
+                        NeedsUpdate = MyEntityUpdateEnum.BEFORE_NEXT_FRAME;
+                    }
+                    else
+                    {
+                        // Switch to checking every 100th frame after 20 failed attempts
+                        NeedsUpdate = MyEntityUpdateEnum.EACH_100TH_FRAME;
+                        _isItOnStandBy = true;
+                    }
+
+                    return;
+                }
+                // Initialization successful
+                _initialized = true;
+
+                // Continue updating at regular intervals as needed
+                NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME | MyEntityUpdateEnum.EACH_10TH_FRAME |
+                              MyEntityUpdateEnum.EACH_100TH_FRAME;
+            }
+            catch (Exception)
+            {
+                MyAPIGateway.Utilities.ShowMessage("Heartbeat core", "ModLogger is fucking null peace of shit");
                 return;
             }
-
-            Logger.LogFileName = Entity.EntityId.ToString();
-
-            // Initialization successful
-            _initialized = true;
-
-            // Continue updating at regular intervals as needed
-            NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME | MyEntityUpdateEnum.EACH_10TH_FRAME |
-                          MyEntityUpdateEnum.EACH_100TH_FRAME;
         }
 
         public override void UpdateAfterSimulation()
@@ -104,7 +109,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.NoIdeaHowToNameF
             //new PhysicalStorageManager(_myGridScanData, _myCubeGrid); // Saves data into Json.
             _iModInitializer.Dispose();
             NeedsUpdate = MyEntityUpdateEnum.NONE;
-            Logger?.Log("ModHeartBeatCore","Close called.");
+            ModLogger.Instance?.Log("ModHeartBeatCore", "Close called.");
 
             base.Close();
         }

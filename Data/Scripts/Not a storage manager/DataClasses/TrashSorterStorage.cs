@@ -19,9 +19,11 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         private const int DefaultAmount = 0;
         private const float DefaultTolerance = 10.0f;
         private readonly ItemDefinitionStorage _itemDefinitionStorage;
-        private readonly Dictionary<IMyTerminalBlock, CustomData> _customDataStorage = new Dictionary<IMyTerminalBlock, CustomData>();
-        private readonly ItemLimitsStorage _itemLimitsStorage;
 
+        private readonly Dictionary<IMyTerminalBlock, CustomData> _customDataStorage =
+            new Dictionary<IMyTerminalBlock, CustomData>();
+
+        private readonly ItemLimitsStorage _itemLimitsStorage;
 
 
         public TrashSorterStorage(ItemDefinitionStorage itemDefinitionStorage, ItemLimitsStorage itemLimitsStorage)
@@ -30,6 +32,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             _itemLimitsStorage = itemLimitsStorage;
             HeartBeat100 += TrashSorterStorage_HeartBeat100;
         }
+
         private void TrashSorterStorage_HeartBeat100()
         {
             //ModLogger.Instance.Log(ClassName,$"OnHeartbeat 100 scan, amount of checked items {_customDataStorage.Count}");
@@ -51,6 +54,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             block.OnClosing += Block_OnClosing;
             return true;
         }
+
         public bool Remove(IMyCubeBlock block)
         {
             var sorter = block as IMyConveyorSorter;
@@ -68,9 +72,10 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             ModLogger.Instance.LogWarning(ClassName, $"Forcing all sorters to update {TrashSorters.Count}");
             foreach (var sorter in _customDataStorage)
             {
-                Terminal_CustomDataChanged(sorter.Key,sorter.Value.CustomDataString);
+                Terminal_CustomDataChanged(sorter.Key, sorter.Value.CustomDataString);
             }
         }
+
         private void Terminal_CustomDataChanged(IMyTerminalBlock obj, string s)
         {
             ModLogger.Instance.Log(ClassName, "Terminal data Changed");
@@ -83,10 +88,12 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
             // Parse and update CustomData
             var tempData = obj.CustomData.ToLowerInvariant();
+            ModLogger.Instance.Log(ClassName, $"Temp data is {tempData}");
             if (tempData.Contains(FillMeTag))
             {
                 ModLogger.Instance.Log(ClassName, "Fill Me tag detected");
-                obj.CustomData = _itemDefinitionStorage.GetDisplayNameListAsCustomData();
+                var FillMeData = _itemDefinitionStorage.GetDisplayNameListAsCustomData();
+                ModLogger.Instance.Log(ClassName, FillMeData);
                 return;
             }
 
@@ -94,8 +101,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             var sorter = obj as IMyConveyorSorter;
             RawCustomDataTransformer(sorter, data);
         }
-
-
 
 
         public void RawCustomDataTransformer(IMyConveyorSorter sorter, Dictionary<string, ModTuple> rawData)
@@ -145,6 +150,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 _itemLimitsStorage.DictionaryTrackedValues[key] = -1;
             }
         }
+
         private Dictionary<string, ModTuple> ParseAndFillCustomData(IMyTerminalBlock obj)
         {
             ModLogger.Instance.Log(ClassName, "Parsing text into RawData");
@@ -158,7 +164,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
             foreach (var line in lines)
             {
-                var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).ToArray();
+                var parts = line.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim())
+                    .ToArray();
 
                 if (parts.Length < 1)
                 {
@@ -173,14 +180,16 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                 MyDefinitionId definitionId;
                 if (!_itemDefinitionStorage.ContainsKey(itemDisplayName, out definitionId))
                 {
-                    ModLogger.Instance.LogError(ClassName, $"Item display name '{itemDisplayName}' not found in storage.");
+                    ModLogger.Instance.LogError(ClassName,
+                        $"Item display name '{itemDisplayName}' not found in storage.");
                     continue;
                 }
 
                 // If the item is already processed, skip to avoid duplicates
                 if (parsedData.ContainsKey(itemDisplayName))
                 {
-                    ModLogger.Instance.LogWarning(ClassName, $"Duplicate entry for '{itemDisplayName}' found. Skipping.");
+                    ModLogger.Instance.LogWarning(ClassName,
+                        $"Duplicate entry for '{itemDisplayName}' found. Skipping.");
                     continue;
                 }
 
@@ -193,14 +202,16 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
                     // Try to parse the max amount, log and skip if failed
                     if (!int.TryParse(parts[1], out maxAmount))
                     {
-                        ModLogger.Instance.LogError(ClassName, $"Failed to parse max amount for '{itemDisplayName}' in line: {line}");
+                        ModLogger.Instance.LogError(ClassName,
+                            $"Failed to parse max amount for '{itemDisplayName}' in line: {line}");
                         maxAmount = DefaultAmount;
                     }
 
                     // Try to parse the percentage, log and skip if failed
                     if (!float.TryParse(parts[2].TrimEnd('%'), out percentageAboveToStartCleanup))
                     {
-                        ModLogger.Instance.LogError(ClassName, $"Failed to parse percentage for '{itemDisplayName}' in line: {line}");
+                        ModLogger.Instance.LogError(ClassName,
+                            $"Failed to parse percentage for '{itemDisplayName}' in line: {line}");
                         percentageAboveToStartCleanup = DefaultTolerance;
                     }
                 }
@@ -284,6 +295,7 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
 
             ModLogger.Instance.Log(ClassName, "Trash Sorter Terminal Registered");
         }
+
         private void UnRegisterTerminal(IMyTerminalBlock terminal)
         {
             if (terminal == null)
@@ -309,7 +321,6 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
         }
 
 
-
         private void Block_OnClosing(VRage.ModAPI.IMyEntity obj)
         {
             Remove(obj as IMyConveyorSorter);
@@ -322,8 +333,8 @@ namespace NotAStorageManager.Data.Scripts.Not_a_storage_manager.DataClasses
             foreach (var terminal in _subscribedTerminals)
             {
                 UnRegisterTerminal(terminal);
-
             }
+
             TrashSorters.Clear();
             HeartBeat100 -= TrashSorterStorage_HeartBeat100;
         }
